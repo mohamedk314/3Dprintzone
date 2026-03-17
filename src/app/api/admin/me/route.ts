@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export async function GET() {
   try {
     const admin = await requireAuthenticatedAdmin();
