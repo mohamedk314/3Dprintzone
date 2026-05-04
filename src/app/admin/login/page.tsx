@@ -1,68 +1,99 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+
+const RESEND_COOLDOWN_SECONDS = 60;
 
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
+  const [otp, setOtp] = useState("");
   const [step, setStep] = useState<"request" | "verify">("request");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
-  async function handleRequestOtp(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  async function sendOtp(emailValue: string): Promise<boolean> {
+    setMessage(null);
+    setIsSendingOtp(true);
 
     try {
-      const response = await fetch("/api/admin/auth/request-otp", {
+      const res = await fetch("/api/admin/auth/request-otp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailValue }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || "Failed to request OTP");
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to send OTP");
       }
 
-      setStep("verify");
-      setMessage("OTP sent successfully.");
+      setResendCooldown(RESEND_COOLDOWN_SECONDS);
+      return true;
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Something went wrong.");
+      setMessage({
+        text: error instanceof Error ? error.message : "Something went wrong.",
+        error: true,
+      });
+      return false;
     } finally {
-      setLoading(false);
+      setIsSendingOtp(false);
+    }
+  }
+
+  async function handleSendOtp(e: FormEvent) {
+    e.preventDefault();
+    const ok = await sendOtp(email);
+    if (ok) {
+      setStep("verify");
+      setMessage({ text: "OTP sent. Check your email.", error: false });
+    }
+  }
+
+  async function handleResendOtp() {
+    const ok = await sendOtp(email);
+    if (ok) {
+      setOtp("");
+      setMessage({ text: "New OTP sent. Check your email.", error: false });
     }
   }
 
   async function handleVerifyOtp(e: FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setMessage("");
+    setMessage(null);
+    setIsVerifyingOtp(true);
 
     try {
-      const response = await fetch("/api/admin/auth/verify-otp", {
+      const res = await fetch("/api/admin/auth/verify-otp", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, code }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
 
-      if (!response.ok) {
+      if (!res.ok) {
         throw new Error(data.message || "Failed to verify OTP");
       }
 
       window.location.href = "/admin";
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Something went wrong.");
+      setMessage({
+        text: error instanceof Error ? error.message : "Something went wrong.",
+        error: true,
+      });
     } finally {
-      setLoading(false);
+      setIsVerifyingOtp(false);
     }
   }
 
@@ -72,7 +103,7 @@ export default function AdminLoginPage() {
         <h1 className="text-2xl font-semibold">Admin Login</h1>
 
         {step === "request" ? (
-          <form onSubmit={handleRequestOtp} className="space-y-4">
+          <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
               <label className="mb-2 block text-sm font-medium">Admin Email</label>
               <input
@@ -87,10 +118,10 @@ export default function AdminLoginPage() {
 
             <button
               type="submit"
-              disabled={loading}
-              className="rounded border px-4 py-2"
+              disabled={isSendingOtp}
+              className="rounded border px-4 py-2 disabled:opacity-50"
             >
-              {loading ? "Sending..." : "Send OTP"}
+              {isSendingOtp ? "Sending..." : "Send OTP"}
             </button>
           </form>
         ) : (
@@ -110,25 +141,45 @@ export default function AdminLoginPage() {
               <label className="mb-2 block text-sm font-medium">Verification Code</label>
               <input
                 type="text"
+                inputMode="numeric"
                 className="w-full rounded border px-3 py-2"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
                 placeholder="6-digit code"
                 required
               />
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded border px-4 py-2"
-            >
-              {loading ? "Verifying..." : "Verify OTP"}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="submit"
+                disabled={isVerifyingOtp}
+                className="rounded border px-4 py-2 disabled:opacity-50"
+              >
+                {isVerifyingOtp ? "Verifying..." : "Verify OTP"}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={isSendingOtp || resendCooldown > 0}
+                className="rounded border px-4 py-2 disabled:opacity-50"
+              >
+                {isSendingOtp
+                  ? "Sending..."
+                  : resendCooldown > 0
+                  ? `Resend in ${resendCooldown}s`
+                  : "Resend OTP"}
+              </button>
+            </div>
           </form>
         )}
 
-        {message ? <p className="text-sm">{message}</p> : null}
+        {message ? (
+          <p className={`text-sm ${message.error ? "text-red-600" : "text-green-600"}`}>
+            {message.text}
+          </p>
+        ) : null}
       </div>
     </main>
   );

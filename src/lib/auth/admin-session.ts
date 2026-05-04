@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db/prisma";
 import { verifyAdminToken } from "@/lib/auth/jwt";
-import { compareValue } from "@/lib/auth/hash";
 
 export type AuthenticatedAdmin = {
   sessionId: string;
@@ -32,6 +31,9 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
     }
 
     if (session.expiresAt <= new Date()) {
+      await prisma.adminSession.deleteMany({
+        where: { id: session.id },
+      });
       return null;
     }
 

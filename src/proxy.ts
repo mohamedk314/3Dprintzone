@@ -39,7 +39,7 @@ export function proxy(request: NextRequest) {
 
   try {
     jwt.verify(token, process.env.JWT_SECRET as string);
-    return NextResponse.next();
+    return NextResponse.next(); 
   } catch {
     if (pathname.startsWith("/api/admin")) {
       return NextResponse.json({ success: false, message: "Unauthorized" }, { status: 401 });

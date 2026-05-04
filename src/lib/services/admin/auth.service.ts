@@ -5,6 +5,9 @@ import { hashValue, compareValue } from "@/lib/auth/hash";
 import { sendAdminOtpEmail } from "@/lib/email/admin-otp";
 import { signAdminToken } from "@/lib/auth/jwt";
 
+const OTP_COOLDOWN_SECONDS = 60;
+const OTP_MAX_ATTEMPTS = 5;
+
 export async function requestAdminOtp(email: string) {
   const normalizedEmail = email.trim().toLowerCase();
 
@@ -24,9 +27,43 @@ export async function requestAdminOtp(email: string) {
     });
   }
 
+  const latestOtp = await prisma.adminOtpCode.findFirst({
+    where: {
+      adminUserId: adminUser.id,
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  if (latestOtp) {
+    const secondsSinceLastOtp = Math.floor(
+      (Date.now() - new Date(latestOtp.createdAt).getTime()) / 1000
+    );
+
+    if (secondsSinceLastOtp < OTP_COOLDOWN_SECONDS) {
+      const waitSeconds = OTP_COOLDOWN_SECONDS - secondsSinceLastOtp;
+      throw new Error(`Please wait ${waitSeconds} seconds before requesting another OTP`);
+    }
+  }
+
+  await prisma.adminOtpCode.updateMany({
+    where: {
+      adminUserId: adminUser.id,
+      usedAt: null,
+      expiresAt: {
+        gt: new Date(),
+      },
+    },
+    data: {
+      usedAt: new Date(),
+    },
+  });
+
   const code = generateOtpCode();
   const codeHash = await hashValue(code);
-  const expiresAt = new Date(Date.now() + env.ADMIN_OTP_EXPIRES_MINUTES * 60 * 1000);
+  const expiresMinutes = Math.max(5, env.ADMIN_OTP_EXPIRES_MINUTES);
+  const expiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
 
   await prisma.adminOtpCode.create({
     data: {
@@ -53,26 +90,30 @@ export async function verifyAdminOtp(email: string, code: string) {
   }
 
   const otpRecord = await prisma.adminOtpCode.findFirst({
-    where: {
-      adminUserId: adminUser.id,
-      usedAt: null,
-      expiresAt: {
-        gt: new Date(),
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
+    where: { adminUserId: adminUser.id },
+    orderBy: { createdAt: "desc" },
   });
 
   if (!otpRecord) {
-    throw new Error("No valid OTP found");
+    throw new Error("No OTP found. Please request a new code");
+  }
+
+  if (otpRecord.usedAt !== null) {
+    throw new Error("OTP has already been used. Please request a new code");
+  }
+
+  if (otpRecord.expiresAt <= new Date()) {
+    throw new Error("OTP has expired. Please request a new code");
+  }
+
+  if (otpRecord.attempts >= OTP_MAX_ATTEMPTS) {
+    throw new Error("OTP attempts exceeded. Please request a new code");
   }
 
   const isValid = await compareValue(code, otpRecord.codeHash);
 
   if (!isValid) {
-    await prisma.adminOtpCode.update({
+    const updated = await prisma.adminOtpCode.update({
       where: { id: otpRecord.id },
       data: {
         attempts: {
@@ -80,6 +121,10 @@ export async function verifyAdminOtp(email: string, code: string) {
         },
       },
     });
+
+    if (updated.attempts >= OTP_MAX_ATTEMPTS) {
+      throw new Error("OTP attempts exceeded. Please request a new code");
+    }
 
     throw new Error("Invalid OTP");
   }
@@ -95,13 +140,10 @@ export async function verifyAdminOtp(email: string, code: string) {
     Date.now() + env.ADMIN_SESSION_EXPIRES_DAYS * 24 * 60 * 60 * 1000
   );
 
-  const rawSessionToken = crypto.randomUUID();
-  const tokenHash = await hashValue(rawSessionToken);
-
   const session = await prisma.adminSession.create({
     data: {
       adminUserId: adminUser.id,
-      tokenHash,
+      tokenHash: await hashValue(crypto.randomUUID()),
       expiresAt: sessionExpiresAt,
     },
   });
@@ -120,4 +162,12 @@ export async function verifyAdminOtp(email: string, code: string) {
       email: adminUser.email,
     },
   };
+}
+
+export async function deleteAdminSessionById(sessionId: string) {
+  await prisma.adminSession.deleteMany({
+    where: {
+      id: sessionId,
+    },
+  });
 }
