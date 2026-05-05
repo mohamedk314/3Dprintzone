@@ -3,12 +3,12 @@ import { prisma } from "@/lib/db/prisma";
 import { getOrCreateSessionId } from "@/lib/utils/session";
 import { generateOrderRef } from "@/lib/utils/order-ref";
 import { PaymentMethod } from "@prisma/client";
+import { getShippingConfig } from "@/lib/services/shipping";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
-const SHIPPING_FEE = 0; // adjust as needed
 
 export async function POST(req: NextRequest) {
   try {
@@ -95,11 +95,14 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const shippingConfig = await getShippingConfig();
+    const shippingFeeAmount = shippingConfig.type === "fixed" ? shippingConfig.amount : 0;
+
     const subtotal = cart.items.reduce(
       (sum, item) => sum + Number(item.unitPrice) * item.qty,
       0
     );
-    const total = subtotal + SHIPPING_FEE;
+    const total = subtotal + shippingFeeAmount;
 
     // --- create order (transaction) ---
     const orderRef = generateOrderRef();
@@ -114,7 +117,7 @@ export async function POST(req: NextRequest) {
           status:       "ordered_cod", // paymob webhook updates to ordered_paid on success
           paymentMethod,
           subtotal,
-          shippingFee: SHIPPING_FEE,
+          shippingFee: shippingFeeAmount,
           total,
           notes:       notes?.trim() || null,
           address: {

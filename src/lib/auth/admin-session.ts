@@ -6,6 +6,7 @@ export type AuthenticatedAdmin = {
   sessionId: string;
   adminUserId: string;
   email: string;
+  role: "super_admin" | "admin";
 };
 
 export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null> {
@@ -45,6 +46,7 @@ export async function getAuthenticatedAdmin(): Promise<AuthenticatedAdmin | null
       sessionId: session.id,
       adminUserId: session.adminUserId,
       email: session.adminUser.email,
+      role: session.adminUser.role as "super_admin" | "admin",
     };
   } catch {
     return null;
@@ -56,6 +58,16 @@ export async function requireAuthenticatedAdmin(): Promise<AuthenticatedAdmin> {
 
   if (!admin) {
     throw new Error("Unauthorized");
+  }
+
+  return admin;
+}
+
+export async function requireSuperAdmin(): Promise<AuthenticatedAdmin> {
+  const admin = await requireAuthenticatedAdmin();
+
+  if (admin.role !== "super_admin") {
+    throw new Error("Forbidden: super admin only");
   }
 
   return admin;

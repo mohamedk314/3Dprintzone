@@ -18,11 +18,14 @@ interface CartItem {
   };
 }
 
+interface ShippingConfig { type: "fixed" | "discussed"; amount: number }
+
 export default function CartPage() {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [shipping, setShipping] = useState<ShippingConfig>({ type: "fixed", amount: 0 });
 
   async function fetchCart() {
     try {
@@ -35,7 +38,10 @@ export default function CartPage() {
   }
 
   useEffect(() => {
-    fetchCart().finally(() => setLoading(false));
+    Promise.all([
+      fetchCart(),
+      fetch("/api/storefront/shipping").then((r) => r.json()).then((d) => { if (d.success) setShipping(d.data); }),
+    ]).finally(() => setLoading(false));
   }, []);
 
   async function updateQty(productId: string, newQty: number) {
@@ -59,8 +65,8 @@ export default function CartPage() {
   }
 
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
-  const shippingFee = 0;
-  const total = subtotal + shippingFee;
+  const shippingFeeAmount = shipping.type === "fixed" ? shipping.amount : 0;
+  const total = subtotal + shippingFeeAmount;
 
   if (loading) {
     return (
@@ -171,13 +177,21 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                <span className={shippingFee === 0 ? "text-green-600 font-medium" : ""}>
-                  {shippingFee === 0 ? "Free" : `${shippingFee} EGP`}
-                </span>
+                {shipping.type === "discussed" ? (
+                  <span className="text-amber-600 font-medium text-xs leading-5">To be discussed</span>
+                ) : shippingFeeAmount === 0 ? (
+                  <span className="text-green-600 font-medium">Free</span>
+                ) : (
+                  <span>{shippingFeeAmount.toFixed(0)} EGP</span>
+                )}
               </div>
               <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between font-bold text-base text-gray-900">
                 <span>Total</span>
-                <span>{total.toFixed(0)} EGP</span>
+                <span>
+                  {shipping.type === "discussed"
+                    ? `${subtotal.toFixed(0)} EGP + shipping`
+                    : `${total.toFixed(0)} EGP`}
+                </span>
               </div>
             </div>
             <button

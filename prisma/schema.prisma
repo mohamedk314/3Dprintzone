@@ -7,6 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AdminRole {
+  super_admin
+  admin
+}
+
 enum OrderStatus {
   delivered
   ordered_cod
@@ -42,11 +47,14 @@ enum CustomRequestStatus {
 model AdminUser {
   id        String         @id @default(cuid())
   email     String         @unique
+  role      AdminRole      @default(admin)
   isActive  Boolean        @default(true)
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   otpCodes  AdminOtpCode[]
   sessions  AdminSession[]
+
+  @@index([role])
 }
 
 model AdminOtpCode {
@@ -244,6 +252,12 @@ model OrderItem {
 
   @@index([orderId])
   @@index([productId])
+}
+
+model SiteSetting {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
 }
 
 model CustomRequest {

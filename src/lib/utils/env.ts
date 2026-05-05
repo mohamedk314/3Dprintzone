@@ -10,7 +10,8 @@ function getEnv(name: string): string {
 
 export const env = {
   DATABASE_URL: getEnv("DATABASE_URL"),
-  ADMIN_EMAIL: getEnv("ADMIN_EMAIL"),
+  ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
+  SUPER_ADMIN_EMAIL: (process.env.SUPER_ADMIN_EMAIL ?? "3dprintzone33@gmail.com").toLowerCase(),
   JWT_SECRET: getEnv("JWT_SECRET"),
   ADMIN_OTP_EXPIRES_MINUTES: Number(process.env.ADMIN_OTP_EXPIRES_MINUTES ?? "10"),
   ADMIN_SESSION_EXPIRES_DAYS: Number(process.env.ADMIN_SESSION_EXPIRES_DAYS ?? "7"),

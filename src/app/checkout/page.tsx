@@ -35,6 +35,8 @@ const EGYPT_GOVERNORATES = [
   "Kafr El Sheikh", "Matruh", "Luxor", "Qena", "North Sinai", "Sohag",
 ];
 
+interface ShippingConfig { type: "fixed" | "discussed"; amount: number }
+
 export default function CheckoutPage() {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
@@ -42,6 +44,7 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [shipping, setShipping] = useState<ShippingConfig>({ type: "fixed", amount: 0 });
 
   const [form, setForm] = useState<FormData>({
     customerName: "", email: "", phone: "", notes: "",
@@ -50,10 +53,10 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    fetch("/api/storefront/cart", { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => setItems(d?.data?.items ?? []))
-      .finally(() => setLoadingCart(false));
+    Promise.all([
+      fetch("/api/storefront/cart", { credentials: "include" }).then((r) => r.json()).then((d) => setItems(d?.data?.items ?? [])),
+      fetch("/api/storefront/shipping").then((r) => r.json()).then((d) => { if (d.success) setShipping(d.data); }),
+    ]).finally(() => setLoadingCart(false));
   }, []);
 
   function setField(key: keyof FormData, value: string) {
@@ -61,6 +64,8 @@ export default function CheckoutPage() {
   }
 
   const subtotal = items.reduce((sum, item) => sum + Number(item.unitPrice) * item.qty, 0);
+  const shippingFeeAmount = shipping.type === "fixed" ? shipping.amount : 0;
+  const total = subtotal + shippingFeeAmount;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -306,7 +311,7 @@ export default function CheckoutPage() {
                     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 space-y-1">
                       <p className="font-semibold">InstaPay Transfer Details:</p>
                       <p>Account: <strong>3dprintzone@instapay</strong></p>
-                      <p>Amount: <strong>{subtotal.toFixed(0)} EGP</strong></p>
+                      <p>Amount: <strong>{shipping.type === "discussed" ? `${subtotal.toFixed(0)} EGP + shipping TBD` : `${total.toFixed(0)} EGP`}</strong></p>
                       <p className="mt-1 text-amber-700">After payment, send a screenshot to our WhatsApp to confirm your order.</p>
                       <a
                         href="https://wa.me/201012708316"
@@ -382,11 +387,26 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                <span className="text-green-600 font-medium">Free</span>
+                {shipping.type === "discussed" ? (
+                  <span className="text-amber-600 font-medium text-xs leading-5">To be discussed</span>
+                ) : shippingFeeAmount === 0 ? (
+                  <span className="text-green-600 font-medium">Free</span>
+                ) : (
+                  <span>{shippingFeeAmount.toFixed(0)} EGP</span>
+                )}
               </div>
+              {shipping.type === "discussed" && (
+                <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
+                  Shipping cost will be confirmed after your order is reviewed.
+                </p>
+              )}
               <div className="flex justify-between font-bold text-base text-gray-900 pt-1 border-t border-gray-100">
                 <span>Total</span>
-                <span>{subtotal.toFixed(0)} EGP</span>
+                <span>
+                  {shipping.type === "discussed"
+                    ? `${subtotal.toFixed(0)} EGP + shipping`
+                    : `${total.toFixed(0)} EGP`}
+                </span>
               </div>
             </div>
 

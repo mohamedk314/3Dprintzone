@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 import { toSlug } from "@/lib/utils/slug";
 import { ProductType } from "@prisma/client";
+import { deleteR2Objects } from "@/lib/services/r2";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -162,10 +163,15 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const existing = await prisma.product.findUnique({ where: { id } });
+    const existing = await prisma.product.findUnique({
+      where: { id },
+      include: { images: { select: { imageUrl: true } } },
+    });
     if (!existing) {
       return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
     }
+
+    await deleteR2Objects(existing.images.map((img) => img.imageUrl));
 
     await prisma.product.update({
       where: { id },

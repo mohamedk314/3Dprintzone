@@ -1,4 +1,17 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 export default function TopBar() {
+  const [text, setText] = useState("Free delivery on orders above 500 EGP");
+
+  useEffect(() => {
+    fetch("/api/storefront/announcement")
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data.text) setText(d.data.text); })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="bg-gray-900 text-white text-xs py-2">
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-2">
@@ -6,7 +19,7 @@ export default function TopBar() {
           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12a2 2 0 002 2h8a2 2 0 002-2L19 8" />
           </svg>
-          Free delivery on orders above 500 EGP
+          {text}
         </span>
         <a
           href="https://wa.me/201012708316"
