@@ -25,4 +25,8 @@ export const env = {
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY ?? "",
   R2_BUCKET_NAME: process.env.R2_BUCKET_NAME ?? "",
   R2_PUBLIC_URL: process.env.R2_PUBLIC_URL ?? "",
+  PAYMOB_API_KEY:        process.env.PAYMOB_API_KEY        ?? "",
+  PAYMOB_INTEGRATION_ID: process.env.PAYMOB_INTEGRATION_ID ?? "",
+  PAYMOB_IFRAME_ID:      process.env.PAYMOB_IFRAME_ID      ?? "",
+  PAYMOB_HMAC_SECRET:    process.env.PAYMOB_HMAC_SECRET    ?? "",
 };

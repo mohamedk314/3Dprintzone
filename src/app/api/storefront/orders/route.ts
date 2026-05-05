@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
           customerName: customerName.trim(),
           email:        email.trim().toLowerCase(),
           phone:        phone.trim(),
-          status:       paymentMethod === "paymob" ? "ordered_paid" : "ordered_cod",
+          status:       "ordered_cod", // paymob webhook updates to ordered_paid on success
           paymentMethod,
           subtotal,
           shippingFee: SHIPPING_FEE,
