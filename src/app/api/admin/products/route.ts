@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           productType: true,
           isActive: true,
           isFeatured: true,
+          brand: true,
           createdAt: true,
           updatedAt: true,
           category: { select: { id: true, name: true, slug: true } },

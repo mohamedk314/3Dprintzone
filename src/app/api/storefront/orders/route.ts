@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
     const total = subtotal + shippingFeeAmount;
 
     // --- create order (transaction) ---
-    const orderRef = generateOrderRef();
+    const orderRef = generateOrderRef(brand);
 
     const order = await prisma.$transaction(async (tx) => {
       const newOrder = await tx.order.create({

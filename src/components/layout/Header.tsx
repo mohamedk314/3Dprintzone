@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 
 interface Counts { cart: number; wishlist: number }
@@ -63,8 +64,8 @@ export default function Header() {
               <span className="font-bold text-xl text-indigo-600 hidden sm:block">3Dprintzone</span>
             </Link>
             <span className="text-gray-200 hidden sm:block">|</span>
-            <Link href="/rayk" className="hidden sm:block text-xs font-bold tracking-[0.25em] uppercase text-gray-400 hover:text-black transition-colors">
-              RAYK
+            <Link href="/rayk" className="hidden sm:block relative w-56 h-14 opacity-70 hover:opacity-100 transition-opacity">
+              <Image src="/brands/rayk-logo.png" alt="RAYK" fill className="object-contain object-left" />
             </Link>
           </div>
 

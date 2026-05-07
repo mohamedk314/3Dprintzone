@@ -39,6 +39,15 @@ export default function CategoryNav() {
           >
             All Products
           </Link>
+          {/* RAYK brand link */}
+          <Link
+            href="/rayk"
+            className={`shrink-0 px-4 py-2.5 text-sm font-black tracking-widest uppercase whitespace-nowrap transition-colors ${
+              pathname.startsWith("/rayk") ? "text-black border-b-2 border-black" : "text-gray-500 hover:text-black"
+            }`}
+          >
+            RAYK
+          </Link>
           {/* Static links */}
           <Link
             href="/custom-request"

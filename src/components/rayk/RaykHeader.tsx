@@ -55,19 +55,19 @@ export default function RaykHeader() {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center gap-6">
           {/* Brand switcher */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/" className="text-xs font-medium text-gray-400 hover:text-gray-600 tracking-widest uppercase transition-colors">
+          <div className="flex items-center gap-3 shrink-0">
+            <Link href="/" className="text-[10px] font-medium text-black/30 hover:text-black/60 tracking-widest uppercase transition-colors">
               3Dprintzone
             </Link>
-            <span className="text-gray-200">|</span>
-            <Link href="/rayk" className="text-xs font-bold text-black tracking-widest uppercase border-b border-black pb-0.5">
+            <span className="text-black/15">|</span>
+            <Link href="/rayk" className="text-sm font-bold text-black tracking-[0.3em] uppercase border-b-2 border-black pb-0.5">
               RAYK
             </Link>
           </div>
 
           {/* Logo */}
           <Link href="/rayk" className="flex-1 flex justify-center md:justify-start items-center">
-            <div className="relative h-8 w-24">
+            <div className="relative h-10 w-32 md:h-12 md:w-40">
               <Image
                 src="/brands/rayk-logo.png"
                 alt="RAYK"
@@ -79,7 +79,7 @@ export default function RaykHeader() {
                   (e.currentTarget.nextSibling as HTMLElement | null)?.removeAttribute("hidden");
                 }}
               />
-              <span hidden className="text-xl font-bold tracking-[0.3em] uppercase text-black">RAYK</span>
+              <span hidden className="text-2xl font-bold tracking-[0.3em] uppercase text-black">RAYK</span>
             </div>
           </Link>
 

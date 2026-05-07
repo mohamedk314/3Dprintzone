@@ -1,178 +1,352 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { LineChart, BarChart, HorizontalBars, type ChartPoint } from "@/components/admin/charts";
 
-interface Stats {
-  categories: number;
-  products: number;
-  orders: number;
-  pendingRequests: number;
+// ─── types ───────────────────────────────────────────────────────────────────
+
+interface Kpis {
+  totalRevenue:  number;
+  codPendingAmt: number;
+  paidCount:     number;
+  codCount:      number;
+  totalOrders:   number;
+  avgOrderValue: number;
+}
+interface TimePoint  { date: string; revenue: number; orders: number; }
+interface BrandPoint { brand: string; revenue: number; orders: number; }
+interface PayPoint   { method: string; count: number; revenue: number; }
+interface TopProduct { name: string; qty: number; revenue: number; }
+interface AnalyticsData {
+  kpis:            Kpis;
+  timeSeries:      TimePoint[];
+  brandComparison: BrandPoint[];
+  paymentSplit:    PayPoint[];
+  topProducts:     TopProduct[];
 }
 
-interface RecentOrder {
-  id: string;
-  orderRef: string;
-  customerName: string;
-  status: string;
-  total: number;
-  createdAt: string;
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+type Preset = "today" | "7d" | "30d" | "3m" | "12m" | "custom";
+
+function getRange(preset: Preset, customFrom?: string, customTo?: string): { from: string; to: string } {
+  const to  = new Date(); to.setHours(23, 59, 59, 999);
+  const from = new Date();
+  if (preset === "today") { from.setHours(0, 0, 0, 0); }
+  else if (preset === "7d")  { from.setDate(from.getDate() - 6);   from.setHours(0, 0, 0, 0); }
+  else if (preset === "30d") { from.setDate(from.getDate() - 29);  from.setHours(0, 0, 0, 0); }
+  else if (preset === "3m")  { from.setMonth(from.getMonth() - 3); from.setHours(0, 0, 0, 0); }
+  else if (preset === "12m") { from.setFullYear(from.getFullYear() - 1); from.setHours(0, 0, 0, 0); }
+  else if (preset === "custom") {
+    return {
+      from: customFrom ? new Date(customFrom + "T00:00:00").toISOString() : from.toISOString(),
+      to:   customTo   ? new Date(customTo   + "T23:59:59").toISOString() : to.toISOString(),
+    };
+  }
+  return { from: from.toISOString(), to: to.toISOString() };
 }
 
-interface RecentRequest {
-  id: string;
-  fullName: string;
-  requestType: string;
-  status: string;
-  createdAt: string;
+function egp(v: number) {
+  return v.toLocaleString("en-EG", { maximumFractionDigits: 0 }) + " EGP";
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  ordered_cod:  "bg-blue-100 text-blue-700",
-  ordered_paid: "bg-green-100 text-green-700",
-  delivered:    "bg-indigo-100 text-indigo-700",
-  canceled:     "bg-red-100 text-red-700",
-  pending:      "bg-amber-100 text-amber-700",
-  reviewed:     "bg-blue-100 text-blue-700",
-  approved:     "bg-green-100 text-green-700",
-  rejected:     "bg-red-100 text-red-700",
-};
+function fmtDate(iso: string, rangePreset: Preset): string {
+  const d = new Date(iso);
+  if (rangePreset === "12m") {
+    return d.toLocaleDateString("en-US", { month: "short" });
+  }
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
-const STATUS_LABELS: Record<string, string> = {
-  ordered_cod: "COD", ordered_paid: "Paid", delivered: "Delivered", canceled: "Canceled",
-  pending: "Pending", reviewed: "Reviewed", approved: "Approved", rejected: "Rejected",
-};
+function brandLabel(b: string) {
+  return b === "rayk" ? "RAYK" : "3DPZ";
+}
+
+function downloadCsv(rows: string[][], filename: string) {
+  const content = rows.map((r) => r.map((c) => `"${c.replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob    = new Blob([content], { type: "text/csv;charset=utf-8;" });
+  const url     = URL.createObjectURL(blob);
+  const a       = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── component ───────────────────────────────────────────────────────────────
+
+const PRESETS: { value: Preset; label: string }[] = [
+  { value: "today", label: "Today"  },
+  { value: "7d",    label: "7 Days" },
+  { value: "30d",   label: "30 Days"},
+  { value: "3m",    label: "3 Mo"   },
+  { value: "12m",   label: "12 Mo"  },
+  { value: "custom",label: "Custom" },
+];
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([]);
+  const [preset,     setPreset]     = useState<Preset>("30d");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo,   setCustomTo]   = useState("");
+  const [data,       setData]       = useState<AnalyticsData | null>(null);
+  const [loading,    setLoading]    = useState(true);
+  const [updatedAt,  setUpdatedAt]  = useState("");
 
-  useEffect(() => {
-    Promise.all([
-      fetch("/api/admin/categories").then((r) => r.json()),
-      fetch("/api/admin/products?limit=1").then((r) => r.json()),
-      fetch("/api/admin/orders?limit=5").then((r) => r.json()),
-      fetch("/api/admin/custom-requests?status=pending&limit=1").then((r) => r.json()),
-    ]).then(([cats, prods, orders, pending]) => {
-      setStats({
-        categories: cats?.data?.length ?? 0,
-        products: prods?.meta?.total ?? 0,
-        orders: orders?.meta?.total ?? 0,
-        pendingRequests: pending?.meta?.total ?? 0,
-      });
-      setRecentOrders(orders?.data ?? []);
-    });
+  const load = useCallback(() => {
+    const { from, to } = getRange(preset, customFrom, customTo);
+    setLoading(true);
+    fetch(`/api/admin/analytics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.success) {
+          setData(d.data);
+          setUpdatedAt(new Date().toLocaleTimeString());
+        }
+      })
+      .finally(() => setLoading(false));
+  }, [preset, customFrom, customTo]);
 
-    fetch("/api/admin/custom-requests?limit=5").then((r) => r.json())
-      .then((d) => setRecentRequests(d?.data ?? []));
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const statCards = [
-    { label: "Categories", value: stats?.categories, href: "/admin/categories", color: "bg-blue-500", icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-      </svg>
-    )},
-    { label: "Products", value: stats?.products, href: "/admin/products", color: "bg-indigo-500", icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-      </svg>
-    )},
-    { label: "Orders", value: stats?.orders, href: "/admin/orders", color: "bg-orange-500", icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-      </svg>
-    )},
-    { label: "Pending Requests", value: stats?.pendingRequests, href: "/admin/custom-requests?status=pending", color: "bg-rose-500", icon: (
-      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-      </svg>
-    )},
-  ];
+  // chart data
+  const revenuePoints: ChartPoint[] = (data?.timeSeries ?? []).map((p) => ({
+    label: fmtDate(p.date, preset),
+    value: p.revenue,
+  }));
+  const ordersPoints: ChartPoint[] = (data?.timeSeries ?? []).map((p) => ({
+    label: fmtDate(p.date, preset),
+    value: p.orders,
+  }));
+  const brandRevPoints: ChartPoint[] = (data?.brandComparison ?? []).map((b) => ({
+    label: brandLabel(b.brand),
+    value: b.revenue,
+  }));
+  const brandOrdPoints: ChartPoint[] = (data?.brandComparison ?? []).map((b) => ({
+    label: brandLabel(b.brand),
+    value: b.orders,
+  }));
+  const payRevPoints: ChartPoint[] = (data?.paymentSplit ?? []).map((p) => ({
+    label: p.method === "cod" ? "COD" : "Online",
+    value: p.revenue,
+  }));
+  const payCntPoints: ChartPoint[] = (data?.paymentSplit ?? []).map((p) => ({
+    label: p.method === "cod" ? "COD" : "Online",
+    value: p.count,
+  }));
+
+  function exportTopProducts() {
+    if (!data) return;
+    const rows = [
+      ["Rank", "Product Name", "Units Sold", "Revenue (EGP)"],
+      ...data.topProducts.map((p, i) => [
+        String(i + 1), p.name, String(p.qty), p.revenue.toFixed(2),
+      ]),
+    ];
+    downloadCsv(rows, "top-products.csv");
+  }
+
+  async function exportOrders() {
+    const { from, to } = getRange(preset, customFrom, customTo);
+    const res  = await fetch(`/api/admin/orders?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=10000`);
+    const json = await res.json();
+    if (!json.success) return;
+    const rows = [
+      ["Order Ref", "Customer", "Email", "Status", "Payment", "Brand", "Total (EGP)", "Date"],
+      ...json.data.map((o: {
+        orderRef: string; customerName: string; email: string;
+        status: string; paymentMethod: string; brand: string;
+        total: number; createdAt: string;
+      }) => [
+        o.orderRef, o.customerName, o.email, o.status, o.paymentMethod,
+        o.brand, Number(o.total).toFixed(2),
+        new Date(o.createdAt).toLocaleString(),
+      ]),
+    ];
+    downloadCsv(rows, "orders.csv");
+  }
+
+  const kpis = data?.kpis;
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Overview of your store</p>
+      {/* Header */}
+      <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Analytics</h1>
+          {updatedAt && <p className="text-xs text-gray-400 mt-0.5">Updated {updatedAt}</p>}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Range presets */}
+          <div className="flex bg-gray-100 rounded-lg p-0.5 gap-0.5">
+            {PRESETS.map((p) => (
+              <button
+                key={p.value}
+                onClick={() => setPreset(p.value)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  preset === p.value
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom date pickers */}
+          {preset === "custom" && (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-indigo-400"
+              />
+              <span className="text-xs text-gray-400">–</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="text-xs border border-gray-200 rounded-md px-2 py-1.5 focus:outline-none focus:border-indigo-400"
+              />
+              <button
+                onClick={load}
+                className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-md hover:bg-indigo-700 transition-colors"
+              >
+                Apply
+              </button>
+            </div>
+          )}
+
+          {/* Export orders */}
+          <button
+            onClick={exportOrders}
+            className="inline-flex items-center gap-1.5 text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export Orders
+          </button>
+
+          {/* Refresh */}
+          <button
+            onClick={load}
+            disabled={loading}
+            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((card) => (
-          <Link key={card.label} href={card.href}
-            className="bg-white rounded-xl border border-gray-100 p-4 hover:shadow-md transition-shadow group"
-          >
-            <div className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center text-white mb-3`}>
-              {card.icon}
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {[
+          { label: "Total Revenue",   value: kpis ? egp(kpis.totalRevenue)  : "—", sub: "Non-canceled", color: "text-indigo-600", bg: "bg-indigo-50" },
+          { label: "COD Pending",     value: kpis ? egp(kpis.codPendingAmt) : "—", sub: "Awaiting delivery", color: "text-amber-600", bg: "bg-amber-50" },
+          { label: "Paid Orders",     value: kpis ? kpis.paidCount.toString() : "—", sub: "Paid + delivered", color: "text-green-600", bg: "bg-green-50" },
+          { label: "COD Orders",      value: kpis ? kpis.codCount.toString()  : "—", sub: "Cash on delivery", color: "text-blue-600", bg: "bg-blue-50" },
+          { label: "Total Orders",    value: kpis ? kpis.totalOrders.toString() : "—", sub: "All statuses", color: "text-gray-700", bg: "bg-gray-50" },
+          { label: "Avg Order Value", value: kpis ? egp(kpis.avgOrderValue)  : "—", sub: "Per non-canceled", color: "text-purple-600", bg: "bg-purple-50" },
+        ].map((card) => (
+          <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4">
+            <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${card.bg} mb-2`}>
+              <div className={`w-2 h-2 rounded-full ${card.color.replace("text-", "bg-")}`} />
             </div>
-            <div className="text-2xl font-bold text-gray-900 mb-0.5">
-              {stats === null ? "—" : (card.value ?? 0)}
+            <div className={`text-xl font-bold ${card.color} leading-tight`}>
+              {loading ? <span className="inline-block w-16 h-5 bg-gray-100 rounded animate-pulse" /> : card.value}
             </div>
-            <div className="text-xs text-gray-500 group-hover:text-indigo-600 transition-colors">{card.label}</div>
-          </Link>
+            <div className="text-xs font-medium text-gray-700 mt-0.5">{card.label}</div>
+            <div className="text-[10px] text-gray-400 mt-0.5">{card.sub}</div>
+          </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Orders */}
-        <div className="bg-white rounded-xl border border-gray-100">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900 text-sm">Recent Orders</h2>
-            <Link href="/admin/orders" className="text-xs text-indigo-600 hover:underline">View all →</Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {recentOrders.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No orders yet</p>
-            ) : recentOrders.map((order) => (
-              <Link key={order.id} href={`/admin/orders/${order.id}`}
-                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{order.customerName}</p>
-                  <p className="text-xs text-gray-400 font-mono">{order.orderRef}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
-                    {STATUS_LABELS[order.status] ?? order.status}
-                  </span>
-                  <p className="text-xs text-gray-500 mt-1">{Number(order.total).toFixed(0)} EGP</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Recent Custom Requests */}
-        <div className="bg-white rounded-xl border border-gray-100">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-900 text-sm">Custom Requests</h2>
-            <Link href="/admin/custom-requests" className="text-xs text-indigo-600 hover:underline">View all →</Link>
-          </div>
-          <div className="divide-y divide-gray-50">
-            {recentRequests.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No requests yet</p>
-            ) : recentRequests.map((req) => (
-              <Link key={req.id} href={`/admin/custom-requests/${req.id}`}
-                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50 transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{req.fullName}</p>
-                  <p className="text-xs text-gray-400 capitalize">{req.requestType}</p>
-                </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[req.status] ?? "bg-gray-100 text-gray-600"}`}>
-                  {STATUS_LABELS[req.status] ?? req.status}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </div>
+      {/* Time-series charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <ChartCard title="Revenue Over Time" subtitle={kpis ? egp(kpis.totalRevenue) : undefined} loading={loading}>
+          <LineChart data={revenuePoints} color="#6366f1" fillColor="#6366f118" />
+        </ChartCard>
+        <ChartCard title="Orders Over Time" subtitle={kpis ? `${kpis.totalOrders} orders` : undefined} loading={loading}>
+          <LineChart data={ordersPoints} color="#f59e0b" fillColor="#f59e0b18" />
+        </ChartCard>
       </div>
 
-      {/* Quick Actions */}
+      {/* Brand + Payment breakdown */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <ChartCard title="Brand Revenue" subtitle="Non-canceled" loading={loading}>
+          <BarChart data={brandRevPoints} color="#6366f1" />
+        </ChartCard>
+        <ChartCard title="Brand Orders" subtitle="Non-canceled" loading={loading}>
+          <BarChart data={brandOrdPoints} color="#8b5cf6" />
+        </ChartCard>
+        <ChartCard title="Payment Revenue" subtitle="COD vs Online" loading={loading}>
+          <HorizontalBars data={payRevPoints} color="#10b981" formatVal={(v) => egp(v)} />
+        </ChartCard>
+        <ChartCard title="Payment Orders" subtitle="COD vs Online" loading={loading}>
+          <HorizontalBars data={payCntPoints} color="#f59e0b" formatVal={(v) => `${Math.round(v)} orders`} />
+        </ChartCard>
+      </div>
+
+      {/* Top products */}
+      <div className="bg-white rounded-xl border border-gray-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-semibold text-gray-900 text-sm">Top Products</h2>
+            <p className="text-xs text-gray-400 mt-0.5">By revenue in selected period</p>
+          </div>
+          <button
+            onClick={exportTopProducts}
+            disabled={!data || data.topProducts.length === 0}
+            className="inline-flex items-center gap-1.5 text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-40"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export CSV
+          </button>
+        </div>
+
+        {loading ? (
+          <div className="p-5 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-8 bg-gray-50 rounded animate-pulse" />
+            ))}
+          </div>
+        ) : !data || data.topProducts.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-10">No product sales in this period</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-50">
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide w-10">#</th>
+                  <th className="text-left px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Product</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Units</th>
+                  <th className="text-right px-5 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Revenue</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {data.topProducts.map((p, i) => (
+                  <tr key={i} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-5 py-3 font-medium text-gray-900">{p.name}</td>
+                    <td className="px-5 py-3 text-right text-gray-600 tabular-nums">{p.qty}</td>
+                    <td className="px-5 py-3 text-right font-semibold text-gray-900 tabular-nums">{egp(p.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Quick links */}
       <div className="bg-white rounded-xl border border-gray-100 p-5">
-        <h2 className="font-semibold text-gray-900 text-sm mb-3">Quick Actions</h2>
+        <h2 className="font-semibold text-gray-900 text-sm mb-3">Quick Links</h2>
         <div className="flex flex-wrap gap-2">
           <Link href="/admin/products/new" className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -180,19 +354,46 @@ export default function AdminDashboardPage() {
             </svg>
             New Product
           </Link>
-          <Link href="/admin/categories" className="inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-            Manage Categories
-          </Link>
-          <Link href="/admin/orders" className="inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
-            View Orders
-          </Link>
-          <Link href="/" target="_blank" className="inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+          <Link href="/admin/categories"      className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Manage Categories</Link>
+          <Link href="/admin/orders"          className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">View Orders</Link>
+          <Link href="/admin/custom-requests" className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Custom Requests</Link>
+          <Link href="/" target="_blank" className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>
             View Storefront
           </Link>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ChartCard wrapper ────────────────────────────────────────────────────────
+
+function ChartCard({
+  title,
+  subtitle,
+  loading,
+  children,
+}: {
+  title:     string;
+  subtitle?: string;
+  loading:   boolean;
+  children:  React.ReactNode;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-100">
+      <div className="px-5 py-4 border-b border-gray-100">
+        <h2 className="font-semibold text-gray-900 text-sm">{title}</h2>
+        {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
+      </div>
+      <div className="p-4">
+        {loading ? (
+          <div className="h-28 w-full bg-gray-50 rounded-lg animate-pulse" />
+        ) : (
+          children
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import RaykProductCard from "@/components/rayk/RaykProductCard";
 
 interface Category { id: string; name: string; slug: string; _count?: { products: number } }
@@ -32,12 +33,18 @@ export default function RaykHomePage() {
       {/* Hero */}
       <section className="bg-black text-white">
         <div className="max-w-7xl mx-auto px-4 py-24 md:py-36 flex flex-col items-center text-center">
-          <p className="text-xs font-semibold tracking-[0.4em] uppercase text-white/40 mb-6">New Collection</p>
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-none mb-6">
-            RAYK
-          </h1>
-          <p className="text-white/50 text-base md:text-lg max-w-md mx-auto mb-10 tracking-wide leading-relaxed">
-            Premium fashion and lifestyle. Crafted for those who move differently.
+          <div className="relative w-72 h-40 sm:w-[26rem] sm:h-56 md:w-[40rem] md:h-72 mb-8">
+            <Image
+              src="/brands/rayk-logo.png"
+              alt="RAYK"
+              fill
+              priority
+              className="object-contain"
+              style={{ filter: "brightness(0) invert(1)" }}
+            />
+          </div>
+          <p className="text-white/60 text-sm md:text-base max-w-xs mx-auto mb-10 tracking-[0.15em] lowercase">
+            your 3d printed gifts
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Link
