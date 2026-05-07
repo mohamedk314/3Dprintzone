@@ -136,7 +136,15 @@ export async function PATCH(
     if (body.shortDescription !== undefined) updateData.shortDescription = body.shortDescription ?? null;
     if (body.description !== undefined) updateData.description = body.description ?? null;
     if (body.compareAtPrice !== undefined) updateData.compareAtPrice = body.compareAtPrice != null ? Number(body.compareAtPrice) : null;
-    if (body.stockQty !== undefined) updateData.stockQty = Number(body.stockQty);
+    if (body.stockQty !== undefined) {
+      const newQty = Number(body.stockQty);
+      updateData.stockQty = newQty;
+      // Reset alert flags when stock is replenished
+      if (newQty > 0) updateData.outOfStockAlertSentAt = null;
+      if (newQty > (body.lowStockThreshold !== undefined ? Number(body.lowStockThreshold) : existing.lowStockThreshold)) {
+        updateData.lowStockAlertSentAt = null;
+      }
+    }
     if (body.lowStockThreshold !== undefined) updateData.lowStockThreshold = Number(body.lowStockThreshold);
     if (body.isActive !== undefined) updateData.isActive = Boolean(body.isActive);
     if (body.isFeatured !== undefined) updateData.isFeatured = Boolean(body.isFeatured);

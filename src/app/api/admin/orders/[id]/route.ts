@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 import { OrderStatus } from "@prisma/client";
+import { sendOrderStatusUpdateEmail } from "@/lib/email/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ const orderDetailSelect = {
   shippingFee:   true,
   total:         true,
   notes:         true,
+  brand:         true,
   createdAt:     true,
   updatedAt:     true,
   address: {
@@ -139,6 +141,17 @@ export async function PATCH(
       data: updateData,
       select: orderDetailSelect,
     });
+
+    if (updateData.status) {
+      sendOrderStatusUpdateEmail({
+        orderRef:     order.orderRef,
+        customerName: order.customerName,
+        email:        order.email,
+        status:       order.status,
+        total:        Number(order.total),
+        brand:        order.brand,
+      }).catch((e) => console.error("[email]", e));
+    }
 
     return NextResponse.json({ success: true, data: order });
   } catch (error) {

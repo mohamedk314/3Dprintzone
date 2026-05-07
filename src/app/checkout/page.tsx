@@ -14,7 +14,6 @@ type PaymentMethod = "cod" | "instapay";
 
 interface FormData {
   customerName: string;
-  email: string;
   phone: string;
   notes: string;
   governorate: string;
@@ -41,23 +40,31 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [loadingCart, setLoadingCart] = useState(true);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shipping, setShipping] = useState<ShippingConfig>({ type: "fixed", amount: 0 });
 
   const [form, setForm] = useState<FormData>({
-    customerName: "", email: "", phone: "", notes: "",
+    customerName: "", phone: "", notes: "",
     governorate: "", city: "", area: "", addressLine1: "",
     addressLine2: "", building: "", floor: "", apartment: "", landmark: "",
   });
 
   useEffect(() => {
     Promise.all([
+      fetch("/api/customer/me").then((r) => r.json()),
       fetch("/api/storefront/cart", { credentials: "include" }).then((r) => r.json()).then((d) => setItems(d?.data?.items ?? [])),
       fetch("/api/storefront/shipping").then((r) => r.json()).then((d) => { if (d.success) setShipping(d.data); }),
-    ]).finally(() => setLoadingCart(false));
-  }, []);
+    ]).then(([me]) => {
+      if (!me.success) {
+        router.replace("/account/login?redirect=/checkout");
+      } else {
+        setCustomerEmail(me.data.email);
+      }
+    }).finally(() => setLoadingCart(false));
+  }, [router]);
 
   function setField(key: keyof FormData, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -74,7 +81,6 @@ export default function CheckoutPage() {
     // For instapay, we still use "cod" as payment method since instapay is manual
     const body = {
       customerName: form.customerName,
-      email: form.email,
       phone: form.phone,
       paymentMethod: "cod",
       notes: paymentMethod === "instapay"
@@ -161,17 +167,16 @@ export default function CheckoutPage() {
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-medium text-gray-700 mb-1 block">Email *</label>
-                  <input
-                    required
-                    type="email"
-                    value={form.email}
-                    onChange={(e) => setField("email", e.target.value)}
-                    placeholder="ahmed@email.com"
-                    className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
-                  />
+                  <label className="text-xs font-medium text-gray-700 mb-1 block">Email</label>
+                  <div className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-lg bg-gray-50">
+                    <span className="text-sm text-gray-700 flex-1 truncate">{customerEmail}</span>
+                    <span className="text-xs text-green-600 font-semibold shrink-0 flex items-center gap-1">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                      Verified
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-700 mb-1 block">Phone *</label>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { CustomRequestType } from "@prisma/client";
+import { sendNewCustomRequestAdminEmail } from "@/lib/email/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,11 @@ export async function POST(req: NextRequest) {
         createdAt:   true,
       },
     });
+
+    sendNewCustomRequestAdminEmail({
+      id: request.id, fullName: fullName.trim(),
+      email: email.trim().toLowerCase(), phone: phone.trim(), requestType,
+    }).catch((e) => console.error("[email]", e));
 
     return NextResponse.json({ success: true, data: request }, { status: 201 });
   } catch {

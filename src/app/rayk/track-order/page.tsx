@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
 interface OrderItem { productName: string; qty: number; unitPrice: number; lineTotal: number }
 interface Order {
@@ -23,6 +24,11 @@ function TrackOrderInner() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(!!searchParams.get("ref"));
   const [error, setError] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/customer/me").then((r) => r.json()).then((d) => setIsLoggedIn(!!d.success));
+  }, []);
 
   async function lookup(orderRef: string) {
     if (!orderRef.trim()) return;
@@ -50,9 +56,18 @@ function TrackOrderInner() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-16">
-      <div className="mb-10">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight mb-1">Track Order</h1>
         <p className="text-xs text-black/40 tracking-widest uppercase">Enter your order reference number</p>
+      </div>
+
+      <div className="mb-6">
+        <Link
+          href={isLoggedIn ? "/account/orders" : "/account/login?redirect=/account/orders"}
+          className="inline-flex items-center gap-2 text-xs font-semibold tracking-widest uppercase text-black/50 hover:text-black transition-colors border-b border-black/20 hover:border-black pb-0.5"
+        >
+          View My Past Orders →
+        </Link>
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-2 mb-10">

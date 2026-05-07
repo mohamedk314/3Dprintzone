@@ -12,14 +12,15 @@ export const transporter = nodemailer.createTransport({
 });
 
 export async function sendEmail(params: {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text?: string;
 }) {
+  const to = Array.isArray(params.to) ? params.to.join(", ") : params.to;
   return transporter.sendMail({
     from: env.SMTP_FROM,
-    to: params.to,
+    to,
     subject: params.subject,
     html: params.html,
     text: params.text,

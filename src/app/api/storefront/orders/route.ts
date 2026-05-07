@@ -4,6 +4,8 @@ import { getOrCreateSessionId } from "@/lib/utils/session";
 import { generateOrderRef } from "@/lib/utils/order-ref";
 import { PaymentMethod } from "@prisma/client";
 import { getShippingConfig } from "@/lib/services/shipping";
+import { sendOrderConfirmationEmail, sendNewOrderAdminEmail, sendLowStockAlertEmail, sendOutOfStockAlertEmail } from "@/lib/email/notifications";
+import { getCustomerSession } from "@/lib/auth/customer-session";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,12 +14,19 @@ const VALID_PAYMENT_METHODS = Object.values(PaymentMethod);
 
 export async function POST(req: NextRequest) {
   try {
+    const customerSession = await getCustomerSession();
+    if (!customerSession) {
+      return NextResponse.json(
+        { success: false, message: "Authentication required. Please verify your email first." },
+        { status: 401 }
+      );
+    }
+
     const sessionId = await getOrCreateSessionId();
     const body      = await req.json();
 
     const {
       customerName,
-      email,
       phone,
       paymentMethod,
       notes,
@@ -25,12 +34,11 @@ export async function POST(req: NextRequest) {
       brand = "3dprintzone",
     } = body;
 
+    const email = customerSession.email;
+
     // --- required field validation ---
     if (!customerName?.trim()) {
       return NextResponse.json({ success: false, message: "customerName is required" }, { status: 400 });
-    }
-    if (!email?.trim()) {
-      return NextResponse.json({ success: false, message: "email is required" }, { status: 400 });
     }
     if (!phone?.trim()) {
       return NextResponse.json({ success: false, message: "phone is required" }, { status: 400 });
@@ -172,6 +180,52 @@ export async function POST(req: NextRequest) {
 
       return newOrder;
     });
+
+    // Fire stock alerts (non-blocking, after transaction)
+    const physicalCartItems = cart.items.filter((i) => i.product.productType === "physical");
+    if (physicalCartItems.length > 0) {
+      Promise.resolve().then(async () => {
+        const updatedProducts = await prisma.product.findMany({
+          where: { id: { in: physicalCartItems.map((i) => i.product.id) } },
+          select: { id: true, name: true, sku: true, brand: true, stockQty: true, lowStockThreshold: true, lowStockAlertSentAt: true, outOfStockAlertSentAt: true },
+        });
+        for (const p of updatedProducts) {
+          if (p.stockQty === 0 && !p.outOfStockAlertSentAt) {
+            await prisma.product.update({ where: { id: p.id }, data: { outOfStockAlertSentAt: new Date() } });
+            sendOutOfStockAlertEmail({ id: p.id, name: p.name, sku: p.sku, brand: p.brand }).catch(console.error);
+          } else if (p.stockQty > 0 && p.stockQty <= p.lowStockThreshold && !p.lowStockAlertSentAt) {
+            await prisma.product.update({ where: { id: p.id }, data: { lowStockAlertSentAt: new Date() } });
+            sendLowStockAlertEmail({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, stockQty: p.stockQty, lowStockThreshold: p.lowStockThreshold }).catch(console.error);
+          }
+        }
+      }).catch(console.error);
+    }
+
+    const fullOrderForEmail = await prisma.order.findUnique({
+      where: { id: order.id },
+      select: {
+        orderRef:      true,
+        customerName:  true,
+        email:         true,
+        total:         true,
+        paymentMethod: true,
+        brand:         true,
+        phone:         true,
+        items: { select: { productName: true, qty: true, lineTotal: true } },
+      },
+    });
+    if (fullOrderForEmail) {
+      const emailPayload = {
+        ...fullOrderForEmail,
+        total:         Number(fullOrderForEmail.total),
+        paymentMethod: String(fullOrderForEmail.paymentMethod),
+        items:         fullOrderForEmail.items.map((i) => ({ ...i, lineTotal: Number(i.lineTotal) })),
+      };
+      Promise.all([
+        sendOrderConfirmationEmail(emailPayload).catch((e) => console.error("[email]", e)),
+        sendNewOrderAdminEmail(emailPayload).catch((e) => console.error("[email]", e)),
+      ]);
+    }
 
     return NextResponse.json({ success: true, data: order }, { status: 201 });
   } catch {

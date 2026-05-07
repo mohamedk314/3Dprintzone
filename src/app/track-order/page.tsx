@@ -44,6 +44,11 @@ function TrackOrderPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/customer/me").then((r) => r.json()).then((d) => setIsLoggedIn(!!d.success));
+  }, []);
 
   async function searchOrder(orderRef: string) {
     if (!orderRef.trim()) return;
@@ -79,6 +84,19 @@ function TrackOrderPage() {
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
         <p className="text-gray-500">Enter your order reference to check the status</p>
+      </div>
+
+      {/* My Orders link */}
+      <div className="text-center mb-4">
+        <Link
+          href={isLoggedIn ? "/account/orders" : "/account/login?redirect=/account/orders"}
+          className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          View My Past Orders
+        </Link>
       </div>
 
       {/* Search */}

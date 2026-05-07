@@ -20,11 +20,13 @@ export default function RaykCheckoutPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [subtotal, setSubtotal] = useState("0");
   const [shippingFee, setShippingFee] = useState(0);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
-    customerName: "", email: "", phone: "", paymentMethod: "cod", notes: "",
+    customerName: "", phone: "", paymentMethod: "cod", notes: "",
     governorate: "", city: "", area: "", addressLine1: "", addressLine2: "",
     building: "", floor: "", apartment: "", landmark: "",
   });
@@ -34,16 +36,25 @@ export default function RaykCheckoutPage() {
   }
 
   useEffect(() => {
-    fetch("/api/storefront/cart?brand=rayk", { credentials: "include" })
-      .then((r) => r.json()).then((d) => {
-        setItems(d?.data?.items ?? []);
-        setSubtotal(d?.data?.subtotal ?? "0");
-      });
-    fetch("/api/storefront/shipping", { credentials: "include" })
-      .then((r) => r.json()).then((d) => {
-        setShippingFee(d?.data?.type === "fixed" ? d.data.amount : 0);
-      });
-  }, []);
+    Promise.all([
+      fetch("/api/customer/me").then((r) => r.json()),
+      fetch("/api/storefront/cart?brand=rayk", { credentials: "include" })
+        .then((r) => r.json()).then((d) => {
+          setItems(d?.data?.items ?? []);
+          setSubtotal(d?.data?.subtotal ?? "0");
+        }),
+      fetch("/api/storefront/shipping", { credentials: "include" })
+        .then((r) => r.json()).then((d) => {
+          setShippingFee(d?.data?.type === "fixed" ? d.data.amount : 0);
+        }),
+    ]).then(([me]) => {
+      if (!me.success) {
+        router.replace("/account/login?redirect=/rayk/checkout");
+      } else {
+        setCustomerEmail(me.data.email);
+      }
+    }).finally(() => setLoadingAuth(false));
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -55,7 +66,6 @@ export default function RaykCheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: form.customerName,
-          email: form.email,
           phone: form.phone,
           paymentMethod: form.paymentMethod,
           notes: form.notes || null,
@@ -85,6 +95,14 @@ export default function RaykCheckoutPage() {
 
   const inputCls = "w-full border border-black/20 px-3 py-2.5 text-sm focus:outline-none focus:border-black tracking-wide bg-white";
   const labelCls = "text-[10px] font-semibold tracking-[0.25em] uppercase text-black/40 mb-1.5 block";
+
+  if (loadingAuth) {
+    return (
+      <div className="max-w-5xl mx-auto px-4 py-20 flex items-center justify-center">
+        <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -118,8 +136,11 @@ export default function RaykCheckoutPage() {
               </div>
             </div>
             <div>
-              <label className={labelCls}>Email *</label>
-              <input required type="email" value={form.email} onChange={(e) => setField("email", e.target.value)} className={inputCls} />
+              <label className={labelCls}>Email</label>
+              <div className="flex items-center gap-2 border border-black/10 px-3 py-2.5 bg-gray-50">
+                <span className="text-sm text-black/70 flex-1 truncate tracking-wide">{customerEmail}</span>
+                <span className="text-[10px] font-semibold tracking-widest uppercase text-green-600 shrink-0">✓ Verified</span>
+              </div>
             </div>
           </section>
 

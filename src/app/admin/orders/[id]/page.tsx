@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { generateOrderPDF } from "@/lib/utils/pdf";
 
 interface OrderItem { id: string; productName: string; sku: string | null; qty: number; unitPrice: number; lineTotal: number }
 interface Address { governorate: string; city: string; area: string | null; addressLine1: string; addressLine2: string | null; building: string | null; floor: string | null; apartment: string | null; landmark: string | null }
 interface Order {
   id: string; orderRef: string; customerName: string; email: string; phone: string;
   status: string; paymentMethod: string; subtotal: number; shippingFee: number; total: number;
-  notes: string | null; createdAt: string; updatedAt: string;
+  notes: string | null; createdAt: string; updatedAt: string; brand: string;
   address: Address | null; items: OrderItem[];
 }
 
@@ -38,6 +39,13 @@ export default function AdminOrderDetailPage() {
   const [newShippingFee, setNewShippingFee] = useState("");
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [downloading, setDownloading] = useState(false);
+
+  async function handleDownloadPDF() {
+    if (!order) return;
+    setDownloading(true);
+    try { await generateOrderPDF(order); } finally { setDownloading(false); }
+  }
 
   useEffect(() => {
     fetch(`/api/admin/orders/${id}`)
@@ -112,13 +120,13 @@ export default function AdminOrderDetailPage() {
   return (
     <div className="p-6 space-y-5 max-w-4xl">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Link href="/admin/orders" className="text-gray-400 hover:text-gray-600">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap flex-1">
           <div>
             <h1 className="text-xl font-bold text-gray-900 font-mono">{order.orderRef}</h1>
             <p className="text-xs text-gray-400">{new Date(order.createdAt).toLocaleString("en-EG")}</p>
@@ -126,6 +134,22 @@ export default function AdminOrderDetailPage() {
           <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
             {STATUS_OPTIONS.find((s) => s.value === order.status)?.label ?? order.status}
           </span>
+        </div>
+        <div className="flex gap-2 ml-auto">
+          <button onClick={handleDownloadPDF} disabled={downloading}
+            className="flex items-center gap-1.5 text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg disabled:opacity-60 transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            {downloading ? "..." : "Download PDF"}
+          </button>
+          <Link href={`/admin/orders/${order.id}/invoice`} target="_blank"
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-indigo-600 border border-gray-200 hover:border-indigo-300 px-3 py-1.5 rounded-lg transition-colors">
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print Invoice
+          </Link>
         </div>
       </div>
 

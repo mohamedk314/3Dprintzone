@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     const maxPrice    = searchParams.get("maxPrice");
     const sort        = searchParams.get("sort") ?? "newest";
     const brand       = searchParams.get("brand") ?? "3dprintzone";
+    const inStock     = searchParams.get("inStock") === "true";
 
     const orderBy = (() => {
       switch (sort) {
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
           ...(maxPrice ? { lte: Number(maxPrice) } : {}),
         },
       } : {}),
+      ...(inStock ? { stockQty: { gt: 0 } } : {}),
       ...(search ? {
         OR: [
           { name:             { contains: search } },

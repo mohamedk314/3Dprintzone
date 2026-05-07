@@ -44,6 +44,12 @@ enum CustomRequestStatus {
   rejected
 }
 
+enum ReviewStatus {
+  pending
+  approved
+  rejected
+}
+
 model AdminUser {
   id        String         @id @default(cuid())
   email     String         @unique
@@ -114,19 +120,22 @@ model Product {
   price             Decimal       @db.Decimal(10, 2)
   compareAtPrice    Decimal?      @db.Decimal(10, 2)
   stockQty          Int           @default(0)
-  lowStockThreshold Int           @default(3)
-  productType       ProductType   @default(physical)
-  isActive          Boolean       @default(true)
-  isFeatured        Boolean       @default(false)
-  brand             String        @default("3dprintzone")
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  lowStockThreshold    Int           @default(3)
+  lowStockAlertSentAt  DateTime?
+  outOfStockAlertSentAt DateTime?
+  productType          ProductType   @default(physical)
+  isActive             Boolean       @default(true)
+  isFeatured           Boolean       @default(false)
+  brand                String        @default("3dprintzone")
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   category          Category      @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   images            ProductImage[]
   cartItems         CartItem[]
   wishlistItems     WishlistItem[]
   orderItems        OrderItem[]
+  reviews           Review[]
 
   @@index([categoryId])
   @@index([isActive])
@@ -290,4 +299,46 @@ model CustomRequest {
   @@index([requestType])
   @@index([status])
   @@index([createdAt])
+}
+
+model CustomerOtpCode {
+  id        String    @id @default(cuid())
+  email     String
+  codeHash  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int       @default(0)
+  createdAt DateTime  @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model CustomerSession {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
+model Review {
+  id        String       @id @default(cuid())
+  productId String
+  email     String
+  name      String
+  rating    Int
+  body      String?      @db.Text
+  status    ReviewStatus @default(pending)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([status])
+  @@index([email])
 }
