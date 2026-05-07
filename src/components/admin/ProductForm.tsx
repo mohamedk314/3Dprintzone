@@ -18,6 +18,7 @@ export interface ProductFormValues {
   productType: "physical" | "digital" | "service";
   isActive: boolean;
   isFeatured: boolean;
+  brand: string;
 }
 
 interface ProductFormProps {
@@ -29,7 +30,7 @@ interface ProductFormProps {
 const defaultValues: ProductFormValues = {
   name: "", categoryId: "", shortDescription: "", description: "",
   sku: "", price: "", compareAtPrice: "", stockQty: "0",
-  lowStockThreshold: "3", productType: "physical", isActive: true, isFeatured: false,
+  lowStockThreshold: "3", productType: "physical", isActive: true, isFeatured: false, brand: "3dprintzone",
 };
 
 export default function ProductForm({ mode, productId, initialValues }: ProductFormProps) {
@@ -40,8 +41,10 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/admin/categories").then((r) => r.json()).then((d) => setCategories(d?.data ?? []));
-  }, []);
+    const params = new URLSearchParams();
+    if (form.brand) params.set("brand", form.brand);
+    fetch(`/api/admin/categories?${params}`).then((r) => r.json()).then((d) => setCategories(d?.data ?? []));
+  }, [form.brand]);
 
   useEffect(() => {
     if (initialValues) setForm({ ...defaultValues, ...initialValues });
@@ -69,6 +72,7 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
         productType: form.productType,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
+        brand: form.brand,
       };
 
       const res = mode === "create"
@@ -102,6 +106,15 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <h2 className="font-semibold text-gray-900 mb-4 text-sm">Basic Information</h2>
         <div className="space-y-4">
+          <div>
+            <label className={labelCls}>Brand *</label>
+            <select required value={form.brand} onChange={(e) => { setField("brand", e.target.value); setField("categoryId", ""); }}
+              className={inputCls + " bg-white"}
+            >
+              <option value="3dprintzone">3Dprintzone</option>
+              <option value="rayk">RAYK</option>
+            </select>
+          </div>
           <div>
             <label className={labelCls}>Name *</label>
             <input required type="text" value={form.name} onChange={(e) => setField("name", e.target.value)}

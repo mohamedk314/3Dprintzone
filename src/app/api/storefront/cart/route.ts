@@ -47,12 +47,13 @@ function buildCartResponse(items: {
   return { items, subtotal: subtotal.toFixed(2), itemCount: items.reduce((s, i) => s + i.qty, 0) };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const sessionId = await getOrCreateSessionId();
+    const brand = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
     const cart = await prisma.cart.findUnique({
-      where: { sessionId },
+      where: { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: cartItemSelect } },
     });
 
@@ -70,7 +71,7 @@ export async function POST(req: NextRequest) {
   try {
     const sessionId = await getOrCreateSessionId();
     const body = await req.json();
-    const { productId, qty = 1 } = body;
+    const { productId, qty = 1, brand = "3dprintzone" } = body;
 
     if (!productId || typeof productId !== "string") {
       return NextResponse.json({ success: false, message: "productId is required" }, { status: 400 });
@@ -98,8 +99,8 @@ export async function POST(req: NextRequest) {
     }
 
     const cart = await prisma.cart.upsert({
-      where:  { sessionId },
-      create: { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
+      create: { sessionId, brand },
       update: {},
       select: { id: true },
     });
@@ -135,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
 
     const updatedCart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: cartItemSelect } },
     });
 

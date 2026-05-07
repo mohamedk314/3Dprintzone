@@ -15,7 +15,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, description, isActive, sortOrder } = body;
+    const { name, description, isActive, sortOrder, brand } = body;
 
     const existing = await prisma.category.findUnique({ where: { id } });
     if (!existing) {
@@ -51,6 +51,7 @@ export async function PATCH(
     if (description !== undefined) updateData.description = description ?? null;
     if (isActive !== undefined) updateData.isActive = Boolean(isActive);
     if (sortOrder !== undefined) updateData.sortOrder = Number(sortOrder);
+    if (brand !== undefined) updateData.brand = brand;
 
     const category = await prisma.category.update({
       where: { id },

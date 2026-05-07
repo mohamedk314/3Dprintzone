@@ -27,15 +27,16 @@ const wishlistItemSelect = {
 } as const;
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const sessionId     = await getOrCreateSessionId();
     const { productId } = await params;
+    const brand         = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
     const wishlist = await prisma.wishlist.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true },
     });
 
@@ -46,7 +47,7 @@ export async function DELETE(
     }
 
     const updated = await prisma.wishlist.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: wishlistItemSelect, orderBy: { createdAt: "desc" } } },
     });
 

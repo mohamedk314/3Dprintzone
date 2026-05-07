@@ -25,6 +25,7 @@ const productSelect = {
   productType: true,
   isActive: true,
   isFeatured: true,
+  brand: true,
   createdAt: true,
   updatedAt: true,
   category: { select: { id: true, name: true, slug: true } },
@@ -139,6 +140,7 @@ export async function PATCH(
     if (body.lowStockThreshold !== undefined) updateData.lowStockThreshold = Number(body.lowStockThreshold);
     if (body.isActive !== undefined) updateData.isActive = Boolean(body.isActive);
     if (body.isFeatured !== undefined) updateData.isFeatured = Boolean(body.isFeatured);
+    if (body.brand !== undefined) updateData.brand = body.brand;
 
     const product = await prisma.product.update({
       where: { id },

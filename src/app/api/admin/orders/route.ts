@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     const search  = searchParams.get("search")?.trim() ?? "";
     const from    = searchParams.get("from");
     const to      = searchParams.get("to");
+    const brand   = searchParams.get("brand") ?? undefined;
 
     if (status && !VALID_STATUSES.includes(status)) {
       return NextResponse.json(
@@ -39,6 +40,7 @@ export async function GET(req: NextRequest) {
     const where = {
       ...(status  ? { status }                        : {}),
       ...(payment ? { paymentMethod: payment }        : {}),
+      ...(brand   ? { brand }                         : {}),
       ...(from || to ? {
         createdAt: {
           ...(from ? { gte: new Date(from) } : {}),
@@ -73,6 +75,7 @@ export async function GET(req: NextRequest) {
           subtotal:      true,
           shippingFee:   true,
           total:         true,
+          brand:         true,
           createdAt:     true,
           updatedAt:     true,
           _count:        { select: { items: true } },

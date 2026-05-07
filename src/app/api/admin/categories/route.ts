@@ -6,11 +6,14 @@ import { toSlug } from "@/lib/utils/slug";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     await requireAuthenticatedAdmin();
 
+    const brand = req.nextUrl.searchParams.get("brand") ?? undefined;
+
     const categories = await prisma.category.findMany({
+      where: brand ? { brand } : undefined,
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -19,6 +22,7 @@ export async function GET() {
         description: true,
         isActive: true,
         sortOrder: true,
+        brand: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -37,7 +41,7 @@ export async function POST(req: NextRequest) {
     await requireAuthenticatedAdmin();
 
     const body = await req.json();
-    const { name, description, isActive = true, sortOrder = 0 } = body;
+    const { name, description, isActive = true, sortOrder = 0, brand = "3dprintzone" } = body;
 
     if (!name || typeof name !== "string" || name.trim() === "") {
       return NextResponse.json(
@@ -63,6 +67,7 @@ export async function POST(req: NextRequest) {
         description: description ?? null,
         isActive: Boolean(isActive),
         sortOrder: Number(sortOrder),
+        brand,
       },
     });
 

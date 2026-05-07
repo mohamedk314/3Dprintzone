@@ -92,6 +92,7 @@ model Category {
   description String?   @db.Text
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
+  brand       String    @default("3dprintzone")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -99,6 +100,7 @@ model Category {
 
   @@index([isActive])
   @@index([sortOrder])
+  @@index([brand])
 }
 
 model Product {
@@ -116,6 +118,7 @@ model Product {
   productType       ProductType   @default(physical)
   isActive          Boolean       @default(true)
   isFeatured        Boolean       @default(false)
+  brand             String        @default("3dprintzone")
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
@@ -129,6 +132,7 @@ model Product {
   @@index([isActive])
   @@index([isFeatured])
   @@index([productType])
+  @@index([brand])
 }
 
 model ProductImage {
@@ -148,11 +152,15 @@ model ProductImage {
 
 model Cart {
   id        String     @id @default(cuid())
-  sessionId String     @unique
+  sessionId String
+  brand     String     @default("3dprintzone")
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 
   items     CartItem[]
+
+  @@unique([sessionId, brand])
+  @@index([sessionId])
 }
 
 model CartItem {
@@ -174,11 +182,15 @@ model CartItem {
 
 model Wishlist {
   id        String         @id @default(cuid())
-  sessionId String         @unique
+  sessionId String
+  brand     String         @default("3dprintzone")
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
   items     WishlistItem[]
+
+  @@unique([sessionId, brand])
+  @@index([sessionId])
 }
 
 model WishlistItem {
@@ -207,6 +219,7 @@ model Order {
   shippingFee   Decimal        @default(0.00) @db.Decimal(10, 2)
   total         Decimal        @db.Decimal(10, 2)
   notes         String?        @db.Text
+  brand         String         @default("3dprintzone")
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -218,6 +231,7 @@ model Order {
   @@index([createdAt])
   @@index([email])
   @@index([phone])
+  @@index([brand])
 }
 
 model Address {

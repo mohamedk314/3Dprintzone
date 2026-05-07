@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       paymentMethod,
       notes,
       address: addr,
+      brand = "3dprintzone",
     } = body;
 
     // --- required field validation ---
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // --- cart validation ---
     const cart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: {
         id:    true,
         items: {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest) {
           shippingFee: shippingFeeAmount,
           total,
           notes:       notes?.trim() || null,
+          brand,
           address: {
             create: {
               governorate:  addr.governorate.trim(),
@@ -166,7 +168,6 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // clear the cart
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return newOrder;

@@ -5,21 +5,22 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
     const { slug } = await params;
+    const brand = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
-    const category = await prisma.category.findUnique({
-      where: { slug, isActive: true },
+    const category = await prisma.category.findFirst({
+      where: { slug, isActive: true, brand },
       select: {
         id:          true,
         name:        true,
         slug:        true,
         description: true,
         products: {
-          where: { isActive: true },
+          where: { isActive: true, brand },
           orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
           select: {
             id:               true,

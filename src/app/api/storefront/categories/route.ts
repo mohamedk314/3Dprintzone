@@ -1,13 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const brand = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
     const categories = await prisma.category.findMany({
-      where: { isActive: true },
+      where: { isActive: true, brand },
       orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
       select: {
         id:          true,
@@ -15,7 +16,7 @@ export async function GET() {
         slug:        true,
         description: true,
         sortOrder:   true,
-        _count:      { select: { products: { where: { isActive: true } } } },
+        _count:      { select: { products: { where: { isActive: true, brand } } } },
       },
     });
 

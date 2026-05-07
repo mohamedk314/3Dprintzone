@@ -20,6 +20,7 @@ interface Product {
   productType: "physical" | "digital" | "service";
   isActive: boolean;
   isFeatured: boolean;
+  brand: string;
 }
 
 export default function EditProductPage() {
@@ -76,6 +77,7 @@ export default function EditProductPage() {
     productType: product.productType,
     isActive: product.isActive,
     isFeatured: product.isFeatured,
+    brand: product.brand ?? "3dprintzone",
   };
 
   return (

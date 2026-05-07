@@ -26,12 +26,13 @@ const wishlistItemSelect = {
   },
 } as const;
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const sessionId = await getOrCreateSessionId();
+    const brand = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
     const wishlist = await prisma.wishlist.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: wishlistItemSelect, orderBy: { createdAt: "desc" } } },
     });
 
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
   try {
     const sessionId = await getOrCreateSessionId();
     const body      = await req.json();
-    const { productId } = body;
+    const { productId, brand = "3dprintzone" } = body;
 
     if (!productId || typeof productId !== "string") {
       return NextResponse.json({ success: false, message: "productId is required" }, { status: 400 });
@@ -64,8 +65,8 @@ export async function POST(req: NextRequest) {
     }
 
     const wishlist = await prisma.wishlist.upsert({
-      where:  { sessionId },
-      create: { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
+      create: { sessionId, brand },
       update: {},
       select: { id: true },
     });
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
     });
 
     const updated = await prisma.wishlist.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: wishlistItemSelect, orderBy: { createdAt: "desc" } } },
     });
 

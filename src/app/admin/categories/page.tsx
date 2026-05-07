@@ -9,10 +9,17 @@ interface Category {
   description: string | null;
   isActive: boolean;
   sortOrder: number;
+  brand: string;
   createdAt: string;
 }
 
-const emptyForm = { name: "", description: "", isActive: true, sortOrder: 0 };
+const emptyForm = { name: "", description: "", isActive: true, sortOrder: 0, brand: "3dprintzone" };
+
+const BRAND_TABS = [
+  { value: "", label: "All Brands" },
+  { value: "3dprintzone", label: "3Dprintzone" },
+  { value: "rayk", label: "RAYK" },
+];
 
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -23,14 +30,17 @@ export default function AdminCategoriesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [brandFilter, setBrandFilter] = useState("");
 
-  async function fetchCategories() {
-    const res = await fetch("/api/admin/categories");
+  async function fetchCategories(b?: string) {
+    const params = new URLSearchParams();
+    if (b) params.set("brand", b);
+    const res = await fetch(`/api/admin/categories?${params}`);
     const data = await res.json();
     setCategories(data?.data ?? []);
   }
 
-  useEffect(() => { fetchCategories().finally(() => setLoading(false)); }, []);
+  useEffect(() => { fetchCategories(brandFilter).finally(() => setLoading(false)); }, [brandFilter]);
 
   function startCreate() {
     setEditId(null);
@@ -42,7 +52,7 @@ export default function AdminCategoriesPage() {
   function startEdit(cat: Category) {
     setShowCreate(false);
     setEditId(cat.id);
-    setForm({ name: cat.name, description: cat.description ?? "", isActive: cat.isActive, sortOrder: cat.sortOrder });
+    setForm({ name: cat.name, description: cat.description ?? "", isActive: cat.isActive, sortOrder: cat.sortOrder, brand: cat.brand });
     setError(null);
   }
 
@@ -67,7 +77,7 @@ export default function AdminCategoriesPage() {
       }
       const data = await res.json();
       if (data.success) {
-        await fetchCategories();
+        await fetchCategories(brandFilter);
         cancelForm();
       } else {
         setError(data.message || "Error saving category");
@@ -84,7 +94,7 @@ export default function AdminCategoriesPage() {
     try {
       const res = await fetch(`/api/admin/categories/${id}`, { method: "DELETE" });
       const data = await res.json();
-      if (data.success) await fetchCategories();
+      if (data.success) await fetchCategories(brandFilter);
     } finally {
       setDeleteId(null);
     }
@@ -97,7 +107,17 @@ export default function AdminCategoriesPage() {
           <h1 className="text-xl font-bold text-gray-900">Categories</h1>
           <p className="text-sm text-gray-500 mt-0.5">{categories.length} total</p>
         </div>
-        <button onClick={startCreate}
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+            {BRAND_TABS.map((t) => (
+              <button key={t.value} type="button" onClick={() => setBrandFilter(t.value)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${brandFilter === t.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={startCreate}
           className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,6 +125,7 @@ export default function AdminCategoriesPage() {
           </svg>
           New Category
         </button>
+        </div>
       </div>
 
       {/* Create / Edit Form */}
@@ -112,7 +133,7 @@ export default function AdminCategoriesPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="font-semibold text-gray-900 mb-4">{editId ? "Edit Category" : "New Category"}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Name *</label>
                 <input required type="text" value={form.name}
@@ -120,6 +141,16 @@ export default function AdminCategoriesPage() {
                   placeholder="Category name"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-50"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Brand *</label>
+                <select required value={form.brand}
+                  onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+                >
+                  <option value="3dprintzone">3Dprintzone</option>
+                  <option value="rayk">RAYK</option>
+                </select>
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Sort Order</label>
@@ -176,6 +207,7 @@ export default function AdminCategoriesPage() {
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Name</th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Brand</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden sm:table-cell">Slug</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden md:table-cell">Sort</th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
@@ -188,6 +220,11 @@ export default function AdminCategoriesPage() {
                   <td className="px-5 py-3">
                     <p className="font-medium text-gray-900">{cat.name}</p>
                     {cat.description && <p className="text-xs text-gray-400 mt-0.5 truncate max-w-xs">{cat.description}</p>}
+                  </td>
+                  <td className="px-5 py-3 hidden sm:table-cell">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cat.brand === "rayk" ? "bg-gray-900 text-white" : "bg-indigo-100 text-indigo-700"}`}>
+                      {cat.brand === "rayk" ? "RAYK" : "3DPZ"}
+                    </span>
                   </td>
                   <td className="px-5 py-3 font-mono text-gray-500 text-xs hidden sm:table-cell">{cat.slug}</td>
                   <td className="px-5 py-3 text-gray-500 hidden md:table-cell">{cat.sortOrder}</td>

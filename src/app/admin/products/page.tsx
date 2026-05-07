@@ -13,10 +13,17 @@ interface Product {
   productType: string;
   isActive: boolean;
   isFeatured: boolean;
+  brand: string;
   category: { name: string } | null;
   images: { imageUrl: string }[];
   createdAt: string;
 }
+
+const BRAND_TABS = [
+  { value: "", label: "All Brands" },
+  { value: "3dprintzone", label: "3Dprintzone" },
+  { value: "rayk", label: "RAYK" },
+];
 
 interface Meta { total: number; page: number; pages: number }
 
@@ -32,11 +39,13 @@ export default function AdminProductsPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [brand, setBrand] = useState("");
 
-  async function fetchProducts(p: number, s: string) {
+  async function fetchProducts(p: number, s: string, b: string) {
     setLoading(true);
     const params = new URLSearchParams({ page: String(p), limit: "20" });
     if (s) params.set("search", s);
+    if (b) params.set("brand", b);
     const res = await fetch(`/api/admin/products?${params}`);
     const data = await res.json();
     setProducts(data?.data ?? []);
@@ -44,12 +53,17 @@ export default function AdminProductsPage() {
     setLoading(false);
   }
 
-  useEffect(() => { fetchProducts(page, search); }, [page, search]);
+  useEffect(() => { fetchProducts(page, search, brand); }, [page, search, brand]);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
     setSearch(searchInput);
+  }
+
+  function handleBrandChange(b: string) {
+    setBrand(b);
+    setPage(1);
   }
 
   async function toggleActive(id: string, current: boolean) {
@@ -58,7 +72,7 @@ export default function AdminProductsPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ isActive: !current }),
     });
-    fetchProducts(page, search);
+    fetchProducts(page, search, brand);
   }
 
   return (
@@ -76,6 +90,17 @@ export default function AdminProductsPage() {
           </svg>
           New Product
         </Link>
+      </div>
+
+      {/* Brand Tabs */}
+      <div className="flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+        {BRAND_TABS.map((t) => (
+          <button key={t.value} type="button" onClick={() => handleBrandChange(t.value)}
+            className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${brand === t.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       {/* Search */}
@@ -115,6 +140,7 @@ export default function AdminProductsPage() {
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-100">
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Product</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide hidden lg:table-cell">Brand</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Price</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Stock</th>
@@ -141,6 +167,11 @@ export default function AdminProductsPage() {
                             {p.sku && <p className="text-xs text-gray-400 font-mono">{p.sku}</p>}
                           </div>
                         </div>
+                      </td>
+                      <td className="px-5 py-3 hidden lg:table-cell">
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${p.brand === "rayk" ? "bg-gray-900 text-white" : "bg-indigo-100 text-indigo-700"}`}>
+                          {p.brand === "rayk" ? "RAYK" : "3DPZ"}
+                        </span>
                       </td>
                       <td className="px-5 py-3 text-gray-600">{p.category?.name ?? "—"}</td>
                       <td className="px-5 py-3 font-medium text-gray-900">{Number(p.price).toFixed(0)} EGP</td>

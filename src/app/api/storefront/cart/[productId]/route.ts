@@ -49,6 +49,7 @@ export async function PATCH(
     const { productId }   = await params;
     const body            = await req.json();
     const parsedQty       = Number(body.qty);
+    const brand           = (body.brand as string) ?? req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
     if (!Number.isInteger(parsedQty) || parsedQty < 0) {
       return NextResponse.json(
@@ -58,7 +59,7 @@ export async function PATCH(
     }
 
     const cart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true },
     });
 
@@ -92,7 +93,7 @@ export async function PATCH(
     }
 
     const updatedCart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: cartItemSelect } },
     });
 
@@ -103,15 +104,16 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     const sessionId     = await getOrCreateSessionId();
     const { productId } = await params;
+    const brand         = req.nextUrl.searchParams.get("brand") ?? "3dprintzone";
 
     const cart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true },
     });
 
@@ -124,7 +126,7 @@ export async function DELETE(
     });
 
     const updatedCart = await prisma.cart.findUnique({
-      where:  { sessionId },
+      where:  { sessionId_brand: { sessionId, brand } },
       select: { id: true, items: { select: cartItemSelect } },
     });
 

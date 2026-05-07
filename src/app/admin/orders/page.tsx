@@ -13,9 +13,16 @@ interface Order {
   status: string;
   paymentMethod: string;
   total: number;
+  brand: string;
   createdAt: string;
   _count: { items: number };
 }
+
+const BRAND_TABS = [
+  { value: "", label: "All Brands" },
+  { value: "3dprintzone", label: "3Dprintzone" },
+  { value: "rayk", label: "RAYK" },
+];
 
 interface Meta { total: number; page: number; pages: number }
 
@@ -47,6 +54,7 @@ function OrdersPageInner() {
 
   const status = searchParams.get("status") ?? "";
   const search = searchParams.get("search") ?? "";
+  const brand  = searchParams.get("brand") ?? "";
   const page   = Number(searchParams.get("page") ?? "1");
   const [searchInput, setSearchInput] = useState(search);
 
@@ -62,17 +70,29 @@ function OrdersPageInner() {
     const p = new URLSearchParams({ page: String(page), limit: "20" });
     if (status) p.set("status", status);
     if (search) p.set("search", search);
+    if (brand)  p.set("brand", brand);
     fetch(`/api/admin/orders?${p.toString()}`)
       .then((r) => r.json())
       .then((d) => { setOrders(d?.data ?? []); setMeta(d?.meta ?? null); })
       .finally(() => setLoading(false));
-  }, [status, search, page]);
+  }, [status, search, brand, page]);
 
   return (
     <div className="p-6 space-y-5">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900">Orders</h1>
-        {meta && <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Orders</h1>
+          {meta && <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>}
+        </div>
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          {BRAND_TABS.map((t) => (
+            <button key={t.value} type="button" onClick={() => setParam("brand", t.value)}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-md transition-colors ${brand === t.value ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Filters */}

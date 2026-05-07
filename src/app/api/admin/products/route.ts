@@ -18,10 +18,12 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit") ?? "20")));
     const categoryId = searchParams.get("categoryId") ?? undefined;
     const isActive = searchParams.get("isActive");
+    const brand = searchParams.get("brand") ?? undefined;
 
     const where = {
       ...(categoryId ? { categoryId } : {}),
       ...(isActive !== null ? { isActive: isActive === "true" } : {}),
+      ...(brand ? { brand } : {}),
     };
 
     const [total, products] = await Promise.all([
@@ -87,6 +89,7 @@ export async function POST(req: NextRequest) {
       productType = "physical",
       isActive = true,
       isFeatured = false,
+      brand = "3dprintzone",
     } = body;
 
     if (!name || typeof name !== "string" || name.trim() === "") {
@@ -141,6 +144,7 @@ export async function POST(req: NextRequest) {
         productType,
         isActive: Boolean(isActive),
         isFeatured: Boolean(isFeatured),
+        brand,
       },
     });
 
