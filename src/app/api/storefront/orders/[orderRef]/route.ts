@@ -14,16 +14,20 @@ export async function GET(
     const order = await prisma.order.findUnique({
       where:  { orderRef },
       select: {
-        id:            true,
-        orderRef:      true,
-        customerName:  true,
-        status:        true,
-        paymentMethod: true,
-        subtotal:      true,
-        shippingFee:   true,
-        total:         true,
-        createdAt:     true,
-        updatedAt:     true,
+        id:                true,
+        orderRef:          true,
+        customerName:      true,
+        status:            true,
+        paymentMethod:     true,
+        subtotal:          true,
+        shippingFee:       true,
+        total:             true,
+        shipmentStatus:    true,
+        trackingNumber:    true,
+        courierName:       true,
+        estimatedDelivery: true,
+        createdAt:         true,
+        updatedAt:         true,
         address: {
           select: {
             governorate:  true,
@@ -41,6 +45,12 @@ export async function GET(
             unitPrice:   true,
             lineTotal:   true,
           },
+        },
+        shippingMethod: {
+          select: { name: true, estimatedDays: true },
+        },
+        shippingZone: {
+          select: { name: true, estimatedDaysMin: true, estimatedDaysMax: true },
         },
       },
     });

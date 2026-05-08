@@ -7,7 +7,7 @@ import Link from "next/link";
 interface CartItem {
   qty: number;
   unitPrice: number;
-  product: { id: string; name: string; slug: string; images?: { imageUrl: string }[] };
+  product: { id: string; name: string; slug: string; forceShippingDiscussion: boolean; images?: { imageUrl: string }[] };
 }
 
 type PaymentMethod = "cod" | "instapay";
@@ -25,6 +25,16 @@ interface FormData {
   floor: string;
   apartment: string;
   landmark: string;
+}
+
+interface ShippingZone {
+  id: string; name: string; governorates: string;
+  priceOverride: number; estimatedDaysMin: number; estimatedDaysMax: number;
+}
+
+interface ShippingMethod {
+  id: string; name: string; description: string | null;
+  price: number; estimatedDays: number;
 }
 
 const EGYPT_GOVERNORATES = [
@@ -45,6 +55,11 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [shipping, setShipping] = useState<ShippingConfig>({ type: "fixed", amount: 0 });
+  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethod[]>([]);
+  const [selectedZoneId, setSelectedZoneId] = useState("");
+  const [selectedMethodId, setSelectedMethodId] = useState("");
+  const [zoneUnknown, setZoneUnknown] = useState(false);
 
   const [form, setForm] = useState<FormData>({
     customerName: "", phone: "", notes: "",
@@ -57,6 +72,8 @@ export default function CheckoutPage() {
       fetch("/api/customer/me").then((r) => r.json()),
       fetch("/api/storefront/cart", { credentials: "include" }).then((r) => r.json()).then((d) => setItems(d?.data?.items ?? [])),
       fetch("/api/storefront/shipping").then((r) => r.json()).then((d) => { if (d.success) setShipping(d.data); }),
+      fetch("/api/storefront/shipping/zones").then((r) => r.json()).then((d) => { if (d.success) setShippingZones(d.data); }),
+      fetch("/api/storefront/shipping/methods").then((r) => r.json()).then((d) => { if (d.success) setShippingMethods(d.data); }),
     ]).then(([me]) => {
       if (!me.success) {
         router.replace("/account/login?redirect=/checkout");
@@ -70,15 +87,62 @@ export default function CheckoutPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  // Auto-match zone when governorate changes
+  useEffect(() => {
+    if (!shippingZones.length || !form.governorate) {
+      setSelectedZoneId("");
+      setZoneUnknown(false);
+      return;
+    }
+    const gov = form.governorate.trim().toLowerCase();
+    const match = shippingZones.find((z) =>
+      z.governorates.split(",").some((g) => g.trim().toLowerCase() === gov)
+    );
+    if (match) {
+      setSelectedZoneId(match.id);
+      setZoneUnknown(false);
+    } else {
+      setSelectedZoneId("");
+      setZoneUnknown(true);
+    }
+  }, [form.governorate, shippingZones]);
+
+  const selectedZone = shippingZones.find((z) => z.id === selectedZoneId);
+  const selectedMethod = shippingMethods.find((m) => m.id === selectedMethodId);
+
+  const hasForceShippingDiscussion = items.some((i) => i.product.forceShippingDiscussion);
   const subtotal = items.reduce((sum, item) => sum + Number(item.unitPrice) * item.qty, 0);
-  const shippingFeeAmount = shipping.type === "fixed" ? shipping.amount : 0;
+  const hasZones = shippingZones.length > 0;
+  const hasZonesOrMethods = hasZones || shippingMethods.length > 0;
+
+  let shippingFeeAmount: number;
+  let shippingIsDiscussed: boolean;
+
+  if (hasForceShippingDiscussion) {
+    shippingFeeAmount = 0;
+    shippingIsDiscussed = true;
+  } else if (hasZonesOrMethods) {
+    if (zoneUnknown) {
+      shippingFeeAmount = 0;
+      shippingIsDiscussed = true;
+    } else {
+      shippingFeeAmount = (selectedZone ? Number(selectedZone.priceOverride) : 0) + (selectedMethod ? Number(selectedMethod.price) : 0);
+      shippingIsDiscussed = false;
+    }
+  } else {
+    shippingFeeAmount = shipping.type === "fixed" ? shipping.amount : 0;
+    shippingIsDiscussed = shipping.type === "discussed";
+  }
+
   const total = subtotal + shippingFeeAmount;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // For instapay, we still use "cod" as payment method since instapay is manual
+    // Block only if zones exist, a governorate is chosen, it matched no zone AND it's not an unknown-zone case
+    // (zoneUnknown orders proceed with shipping to-be-discussed)
+
     const body = {
       customerName: form.customerName,
       phone: form.phone,
@@ -97,6 +161,8 @@ export default function CheckoutPage() {
         apartment: form.apartment || undefined,
         landmark: form.landmark || undefined,
       },
+      ...(selectedZoneId ? { shippingZoneId: selectedZoneId } : {}),
+      ...(selectedMethodId ? { shippingMethodId: selectedMethodId } : {}),
     };
 
     setSubmitting(true);
@@ -272,10 +338,90 @@ export default function CheckoutPage() {
             </div>
           </div>
 
+          {/* Forced-discussion banner */}
+          {hasForceShippingDiscussion && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-amber-800">Shipping to be discussed</p>
+                  <p className="text-xs text-amber-700 mt-0.5">Your cart contains one or more large or heavy items. Shipping cost cannot be calculated automatically and will be confirmed with you after placing the order.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Shipping options */}
+          {!hasForceShippingDiscussion && (shippingZones.length > 0 || shippingMethods.length > 0) && (
+            <div className="bg-white rounded-xl border border-gray-100 p-5">
+              <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+                Shipping Options
+              </h2>
+              <div className="space-y-3">
+                {shippingZones.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">Shipping Zone</label>
+                    {!form.governorate ? (
+                      <p className="text-xs text-gray-400 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+                        Select your governorate above to auto-detect your shipping zone.
+                      </p>
+                    ) : zoneUnknown ? (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                        <p className="text-xs font-semibold text-amber-800">Your governorate is not in a known zone yet.</p>
+                        <p className="text-xs text-amber-700 mt-0.5">Shipping cost will be confirmed after your order is reviewed.</p>
+                      </div>
+                    ) : selectedZone ? (
+                      <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2.5">
+                        <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-indigo-900">{selectedZone.name}</p>
+                          <p className="text-xs text-indigo-600">{Number(selectedZone.priceOverride).toFixed(0)} EGP · {selectedZone.estimatedDaysMin}–{selectedZone.estimatedDaysMax} days</p>
+                        </div>
+                        <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
+                {shippingMethods.length > 0 && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1 block">Delivery Method</label>
+                    <div className="space-y-2">
+                      {shippingMethods.map((method) => (
+                        <label key={method.id} className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
+                          selectedMethodId === method.id ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-gray-300"
+                        }`}>
+                          <input type="radio" name="shippingMethod" value={method.id}
+                            checked={selectedMethodId === method.id}
+                            onChange={() => setSelectedMethodId(method.id)}
+                            className="mt-0.5 accent-indigo-600" />
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900 text-sm">{method.name}
+                              {Number(method.price) > 0 && <span className="ml-2 text-indigo-600">+{Number(method.price).toFixed(0)} EGP</span>}
+                            </p>
+                            {method.description && <p className="text-xs text-gray-500 mt-0.5">{method.description}</p>}
+                            <p className="text-xs text-gray-400 mt-0.5">Est. {method.estimatedDays} business day{method.estimatedDays !== 1 ? "s" : ""}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Payment method */}
           <div className="bg-white rounded-xl border border-gray-100 p-5">
             <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">3</span>
+              <span className="w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">{shippingZones.length > 0 || shippingMethods.length > 0 ? "4" : "3"}</span>
               Payment Method
             </h2>
             <div className="space-y-3">
@@ -316,7 +462,7 @@ export default function CheckoutPage() {
                     <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 space-y-1">
                       <p className="font-semibold">InstaPay Transfer Details:</p>
                       <p>Account: <strong>3dprintzone@instapay</strong></p>
-                      <p>Amount: <strong>{shipping.type === "discussed" ? `${subtotal.toFixed(0)} EGP + shipping TBD` : `${total.toFixed(0)} EGP`}</strong></p>
+                      <p>Amount: <strong>{shippingIsDiscussed ? `${subtotal.toFixed(0)} EGP + shipping TBD` : `${total.toFixed(0)} EGP`}</strong></p>
                       <p className="mt-1 text-amber-700">After payment, send a screenshot to our WhatsApp to confirm your order.</p>
                       <a
                         href="https://wa.me/201012708316"
@@ -392,7 +538,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                {shipping.type === "discussed" ? (
+                {shippingIsDiscussed ? (
                   <span className="text-amber-600 font-medium text-xs leading-5">To be discussed</span>
                 ) : shippingFeeAmount === 0 ? (
                   <span className="text-green-600 font-medium">Free</span>
@@ -400,15 +546,19 @@ export default function CheckoutPage() {
                   <span>{shippingFeeAmount.toFixed(0)} EGP</span>
                 )}
               </div>
-              {shipping.type === "discussed" && (
+              {shippingIsDiscussed && (
                 <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-2 py-1.5">
-                  Shipping cost will be confirmed after your order is reviewed.
+                  {hasForceShippingDiscussion
+                    ? "Cart contains large/heavy items. Shipping will be confirmed after review."
+                    : zoneUnknown
+                    ? "Your governorate is not in a known zone yet. Shipping will be confirmed after review."
+                    : "Shipping cost will be confirmed after your order is reviewed."}
                 </p>
               )}
               <div className="flex justify-between font-bold text-base text-gray-900 pt-1 border-t border-gray-100">
                 <span>Total</span>
                 <span>
-                  {shipping.type === "discussed"
+                  {shippingIsDiscussed
                     ? `${subtotal.toFixed(0)} EGP + shipping`
                     : `${total.toFixed(0)} EGP`}
                 </span>

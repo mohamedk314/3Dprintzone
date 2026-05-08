@@ -24,9 +24,10 @@ export async function GET(
         compareAtPrice:   true,
         stockQty:         true,
         lowStockThreshold: true,
-        productType:      true,
-        isFeatured:       true,
-        createdAt:        true,
+        productType:             true,
+        isFeatured:              true,
+        forceShippingDiscussion: true,
+        createdAt:               true,
         category:         { select: { name: true, slug: true } },
         images: {
           orderBy: { sortOrder: "asc" },

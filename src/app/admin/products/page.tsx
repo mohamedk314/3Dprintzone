@@ -13,6 +13,7 @@ interface Product {
   productType: string;
   isActive: boolean;
   isFeatured: boolean;
+  forceShippingDiscussion: boolean;
   brand: string;
   category: { name: string } | null;
   images: { imageUrl: string }[];
@@ -191,6 +192,9 @@ export default function AdminProductsPage() {
                           </span>
                           {p.isFeatured && (
                             <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">Featured</span>
+                          )}
+                          {p.forceShippingDiscussion && (
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">Ship TBD</span>
                           )}
                         </div>
                       </td>

@@ -32,6 +32,8 @@ export async function POST(req: NextRequest) {
       notes,
       address: addr,
       brand = "3dprintzone",
+      shippingZoneId,
+      shippingMethodId,
     } = body;
 
     const email = customerSession.email;
@@ -68,13 +70,14 @@ export async function POST(req: NextRequest) {
             unitPrice: true,
             product: {
               select: {
-                id:          true,
-                name:        true,
-                sku:         true,
-                price:       true,
-                stockQty:    true,
-                productType: true,
-                isActive:    true,
+                id:                      true,
+                name:                    true,
+                sku:                     true,
+                price:                   true,
+                stockQty:                true,
+                productType:             true,
+                isActive:                true,
+                forceShippingDiscussion: true,
               },
             },
           },
@@ -104,8 +107,40 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const shippingConfig = await getShippingConfig();
-    const shippingFeeAmount = shippingConfig.type === "fixed" ? shippingConfig.amount : 0;
+    const hasForceDiscussion = cart.items.some((i) => i.product.forceShippingDiscussion);
+
+    let shippingFeeAmount = 0;
+    let resolvedZoneId: string | null = null;
+    let resolvedMethodId: string | null = null;
+
+    if (hasForceDiscussion) {
+      // One or more products require manual shipping — fee stays 0, no zone/method applied
+    } else if (shippingZoneId || shippingMethodId) {
+      if (shippingZoneId) {
+        const zone = await prisma.shippingZone.findUnique({
+          where: { id: shippingZoneId, isActive: true },
+          select: { id: true, priceOverride: true },
+        });
+        if (zone) {
+          shippingFeeAmount += Number(zone.priceOverride);
+          resolvedZoneId = zone.id;
+        }
+      }
+      if (shippingMethodId) {
+        const method = await prisma.shippingMethod.findUnique({
+          where: { id: shippingMethodId, isActive: true },
+          select: { id: true, price: true },
+        });
+        if (method) {
+          shippingFeeAmount += Number(method.price);
+          resolvedMethodId = method.id;
+        }
+      }
+    } else {
+      const shippingConfig = await getShippingConfig();
+      shippingFeeAmount = shippingConfig.type === "fixed" ? shippingConfig.amount : 0;
+    }
+
 
     const subtotal = cart.items.reduce(
       (sum, item) => sum + Number(item.unitPrice) * item.qty,
@@ -123,13 +158,19 @@ export async function POST(req: NextRequest) {
           customerName: customerName.trim(),
           email:        email.trim().toLowerCase(),
           phone:        phone.trim(),
-          status:       "ordered_cod", // paymob webhook updates to ordered_paid on success
+          status:       "ordered_cod",
           paymentMethod,
           subtotal,
           shippingFee: shippingFeeAmount,
           total,
-          notes:       notes?.trim() || null,
+          notes: [
+            notes?.trim() || null,
+            hasForceDiscussion ? "[Shipping to be discussed – large/heavy item]" : null,
+          ].filter(Boolean).join(" ") || null,
           brand,
+          shipmentStatus: "pending",
+          ...(resolvedZoneId   ? { shippingZoneId:   resolvedZoneId }   : {}),
+          ...(resolvedMethodId ? { shippingMethodId: resolvedMethodId } : {}),
           address: {
             create: {
               governorate:  addr.governorate.trim(),

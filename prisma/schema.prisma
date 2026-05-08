@@ -50,6 +50,17 @@ enum ReviewStatus {
   rejected
 }
 
+enum ShipmentStatus {
+  pending
+  confirmed
+  packed
+  shipped
+  out_for_delivery
+  delivered
+  returned
+  canceled
+}
+
 model AdminUser {
   id        String         @id @default(cuid())
   email     String         @unique
@@ -120,13 +131,14 @@ model Product {
   price             Decimal       @db.Decimal(10, 2)
   compareAtPrice    Decimal?      @db.Decimal(10, 2)
   stockQty          Int           @default(0)
-  lowStockThreshold    Int           @default(3)
-  lowStockAlertSentAt  DateTime?
-  outOfStockAlertSentAt DateTime?
-  productType          ProductType   @default(physical)
-  isActive             Boolean       @default(true)
-  isFeatured           Boolean       @default(false)
-  brand                String        @default("3dprintzone")
+  lowStockThreshold       Int           @default(3)
+  lowStockAlertSentAt     DateTime?
+  outOfStockAlertSentAt   DateTime?
+  productType             ProductType   @default(physical)
+  isActive                Boolean       @default(true)
+  isFeatured              Boolean       @default(false)
+  forceShippingDiscussion Boolean       @default(false)
+  brand                   String        @default("3dprintzone")
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -216,26 +228,70 @@ model WishlistItem {
   @@index([productId])
 }
 
-model Order {
-  id            String         @id @default(cuid())
-  orderRef      String         @unique
-  customerName  String
-  email         String
-  phone         String
-  status        OrderStatus
-  paymentMethod PaymentMethod
-  subtotal      Decimal        @db.Decimal(10, 2)
-  shippingFee   Decimal        @default(0.00) @db.Decimal(10, 2)
-  total         Decimal        @db.Decimal(10, 2)
-  notes         String?        @db.Text
-  brand         String         @default("3dprintzone")
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+model ShippingZone {
+  id               String   @id @default(cuid())
+  name             String
+  governorates     String   @db.Text
+  priceOverride    Decimal  @db.Decimal(10, 2)
+  estimatedDaysMin Int      @default(1)
+  estimatedDaysMax Int      @default(3)
+  isActive         Boolean  @default(true)
+  brand            String   @default("both")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  address       Address?
-  items         OrderItem[]
+  orders           Order[]
+
+  @@index([isActive])
+  @@index([brand])
+}
+
+model ShippingMethod {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?  @db.Text
+  price         Decimal  @db.Decimal(10, 2)
+  estimatedDays Int      @default(3)
+  isActive      Boolean  @default(true)
+  brand         String   @default("both")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orders        Order[]
+
+  @@index([isActive])
+  @@index([brand])
+}
+
+model Order {
+  id                String          @id @default(cuid())
+  orderRef          String          @unique
+  customerName      String
+  email             String
+  phone             String
+  status            OrderStatus
+  paymentMethod     PaymentMethod
+  subtotal          Decimal         @db.Decimal(10, 2)
+  shippingFee       Decimal         @default(0.00) @db.Decimal(10, 2)
+  total             Decimal         @db.Decimal(10, 2)
+  notes             String?         @db.Text
+  brand             String          @default("3dprintzone")
+  shipmentStatus    ShipmentStatus?
+  trackingNumber    String?
+  courierName       String?
+  estimatedDelivery DateTime?
+  shippingMethodId  String?
+  shippingZoneId    String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  address           Address?
+  items             OrderItem[]
+  shippingMethod    ShippingMethod? @relation(fields: [shippingMethodId], references: [id])
+  shippingZone      ShippingZone?   @relation(fields: [shippingZoneId], references: [id])
 
   @@index([status])
+  @@index([shipmentStatus])
   @@index([paymentMethod])
   @@index([createdAt])
   @@index([email])

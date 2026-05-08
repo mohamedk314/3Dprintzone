@@ -17,6 +17,17 @@ const STATUS_LABELS: Record<string, string> = {
   canceled: "Canceled",
 };
 
+const SHIPMENT_STATUS_LABELS: Record<string, string> = {
+  pending: "Pending",
+  confirmed: "Confirmed",
+  packed: "Packed & Ready",
+  shipped: "Shipped",
+  out_for_delivery: "Out for Delivery",
+  delivered: "Delivered",
+  returned: "Returned",
+  canceled: "Canceled",
+};
+
 function baseLayout(content: string, brand: string = "3dprintzone") {
   const isRayk = brand === "rayk";
   const headerBg = isRayk ? "#000000" : "#4f46e5";
@@ -185,6 +196,49 @@ export async function sendOutOfStockAlertEmail(product: {
     <a href="${env.NEXT_PUBLIC_APP_URL}/admin/products/${product.id}" style="display:inline-block;margin-top:24px;background:#ef4444;color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;">Restock Product</a>
   `);
   await sendEmail({ to, subject: `[OUT OF STOCK] ${product.name}`, html });
+}
+
+export async function sendShipmentUpdateEmail(order: {
+  orderRef: string; customerName: string; email: string;
+  shipmentStatus: string; trackingNumber?: string;
+  estimatedDelivery?: Date; brand?: string;
+}) {
+  const brand = order.brand ?? "3dprintzone";
+  const label = SHIPMENT_STATUS_LABELS[order.shipmentStatus] ?? order.shipmentStatus;
+  const accentColor = brand === "rayk" ? "#000000" : "#4f46e5";
+
+  const statusIcon = order.shipmentStatus === "shipped" ? "🚚"
+    : order.shipmentStatus === "out_for_delivery" ? "📍"
+    : order.shipmentStatus === "delivered" ? "🎉" : "📦";
+
+  const trackingRow = order.trackingNumber
+    ? `<tr><td style="padding:6px 0;font-size:13px;color:#6b7280;width:160px;">Tracking Number</td><td style="padding:6px 0;font-size:13px;color:#111827;font-weight:600;">${order.trackingNumber}</td></tr>`
+    : "";
+
+  const deliveryRow = order.estimatedDelivery
+    ? `<tr><td style="padding:6px 0;font-size:13px;color:#6b7280;width:160px;">Estimated Delivery</td><td style="padding:6px 0;font-size:13px;color:#111827;font-weight:600;">${new Date(order.estimatedDelivery).toLocaleDateString("en-EG", { dateStyle: "long" })}</td></tr>`
+    : "";
+
+  const html = baseLayout(`
+    <p style="margin:0 0 8px;font-size:14px;color:#6b7280;">Hi ${order.customerName},</p>
+    <h2 style="margin:0 0 24px;font-size:20px;font-weight:700;color:#111827;">${statusIcon} Shipment Update</h2>
+    <p style="margin:0 0 16px;font-size:14px;color:#374151;">Your order <strong>${order.orderRef}</strong> has been updated:</p>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0;font-size:18px;font-weight:700;color:#166534;">${label}</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:24px;">
+      ${trackingRow}
+      ${deliveryRow}
+    </table>
+    <a href="${env.NEXT_PUBLIC_APP_URL}/track-order?ref=${order.orderRef}" style="display:inline-block;background:${accentColor};color:#fff;text-decoration:none;padding:10px 20px;border-radius:6px;font-size:13px;font-weight:600;">Track Your Order</a>
+  `, brand);
+
+  const subject = order.shipmentStatus === "shipped" ? `Your order has been shipped – ${order.orderRef}`
+    : order.shipmentStatus === "out_for_delivery" ? `Out for delivery – ${order.orderRef}`
+    : order.shipmentStatus === "delivered" ? `Order delivered – ${order.orderRef}`
+    : `Shipment update – ${order.orderRef}`;
+
+  await sendEmail({ to: order.email, subject, html });
 }
 
 export async function sendCustomerOtpEmail(email: string, code: string, brand: string = "3dprintzone") {

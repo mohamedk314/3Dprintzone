@@ -47,6 +47,7 @@ export async function GET(req: NextRequest) {
           productType: true,
           isActive: true,
           isFeatured: true,
+          forceShippingDiscussion: true,
           brand: true,
           createdAt: true,
           updatedAt: true,
@@ -90,6 +91,7 @@ export async function POST(req: NextRequest) {
       productType = "physical",
       isActive = true,
       isFeatured = false,
+      forceShippingDiscussion = false,
       brand = "3dprintzone",
     } = body;
 
@@ -145,6 +147,7 @@ export async function POST(req: NextRequest) {
         productType,
         isActive: Boolean(isActive),
         isFeatured: Boolean(isFeatured),
+        forceShippingDiscussion: Boolean(forceShippingDiscussion),
         brand,
       },
     });

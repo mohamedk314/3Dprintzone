@@ -18,6 +18,7 @@ export interface ProductFormValues {
   productType: "physical" | "digital" | "service";
   isActive: boolean;
   isFeatured: boolean;
+  forceShippingDiscussion: boolean;
   brand: string;
 }
 
@@ -30,7 +31,8 @@ interface ProductFormProps {
 const defaultValues: ProductFormValues = {
   name: "", categoryId: "", shortDescription: "", description: "",
   sku: "", price: "", compareAtPrice: "", stockQty: "0",
-  lowStockThreshold: "3", productType: "physical", isActive: true, isFeatured: false, brand: "3dprintzone",
+  lowStockThreshold: "3", productType: "physical", isActive: true, isFeatured: false,
+  forceShippingDiscussion: false, brand: "3dprintzone",
 };
 
 export default function ProductForm({ mode, productId, initialValues }: ProductFormProps) {
@@ -72,6 +74,7 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
         productType: form.productType,
         isActive: form.isActive,
         isFeatured: form.isFeatured,
+        forceShippingDiscussion: form.forceShippingDiscussion,
         brand: form.brand,
       };
 
@@ -219,6 +222,15 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
             <div>
               <p className="text-sm font-medium text-gray-900">Featured</p>
               <p className="text-xs text-gray-500">Show on homepage featured section</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input type="checkbox" checked={form.forceShippingDiscussion}
+              onChange={(e) => setField("forceShippingDiscussion", e.target.checked)}
+              className="w-4 h-4 accent-amber-500" />
+            <div>
+              <p className="text-sm font-medium text-gray-900">Force shipping to be discussed</p>
+              <p className="text-xs text-gray-500">For large/heavy items — overrides all shipping zones & methods. Customer will be told shipping cost is confirmed manually.</p>
             </div>
           </label>
         </div>

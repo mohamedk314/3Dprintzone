@@ -1,29 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
-import { OrderStatus } from "@prisma/client";
-import { sendOrderStatusUpdateEmail } from "@/lib/email/notifications";
+import { OrderStatus, ShipmentStatus } from "@prisma/client";
+import { sendOrderStatusUpdateEmail, sendShipmentUpdateEmail } from "@/lib/email/notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VALID_STATUSES = Object.values(OrderStatus);
+const VALID_SHIPMENT_STATUSES = Object.values(ShipmentStatus);
 
 const orderDetailSelect = {
-  id:            true,
-  orderRef:      true,
-  customerName:  true,
-  email:         true,
-  phone:         true,
-  status:        true,
-  paymentMethod: true,
-  subtotal:      true,
-  shippingFee:   true,
-  total:         true,
-  notes:         true,
-  brand:         true,
-  createdAt:     true,
-  updatedAt:     true,
+  id:                true,
+  orderRef:          true,
+  customerName:      true,
+  email:             true,
+  phone:             true,
+  status:            true,
+  paymentMethod:     true,
+  subtotal:          true,
+  shippingFee:       true,
+  total:             true,
+  notes:             true,
+  brand:             true,
+  shipmentStatus:    true,
+  trackingNumber:    true,
+  courierName:       true,
+  estimatedDelivery: true,
+  shippingMethodId:  true,
+  shippingZoneId:    true,
+  createdAt:         true,
+  updatedAt:         true,
   address: {
     select: {
       id:           true,
@@ -48,6 +55,12 @@ const orderDetailSelect = {
       unitPrice:   true,
       lineTotal:   true,
     },
+  },
+  shippingMethod: {
+    select: { id: true, name: true, estimatedDays: true },
+  },
+  shippingZone: {
+    select: { id: true, name: true, estimatedDaysMin: true, estimatedDaysMax: true },
   },
 } as const;
 
@@ -86,7 +99,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { status, notes, shippingFee } = body;
+    const { status, notes, shippingFee, shipmentStatus, trackingNumber, courierName, estimatedDelivery } = body;
 
     const existing = await prisma.order.findUnique({ where: { id } });
     if (!existing) {
@@ -129,6 +142,22 @@ export async function PATCH(
       updateData.total       = subtotal + fee;
     }
 
+    if (shipmentStatus !== undefined) {
+      if (shipmentStatus !== null && !VALID_SHIPMENT_STATUSES.includes(shipmentStatus)) {
+        return NextResponse.json(
+          { success: false, message: `shipmentStatus must be one of: ${VALID_SHIPMENT_STATUSES.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      updateData.shipmentStatus = shipmentStatus ?? null;
+    }
+
+    if (trackingNumber !== undefined) updateData.trackingNumber = trackingNumber?.trim() || null;
+    if (courierName !== undefined) updateData.courierName = courierName?.trim() || null;
+    if (estimatedDelivery !== undefined) {
+      updateData.estimatedDelivery = estimatedDelivery ? new Date(estimatedDelivery) : null;
+    }
+
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { success: false, message: "No valid fields provided" },
@@ -150,6 +179,18 @@ export async function PATCH(
         status:       order.status,
         total:        Number(order.total),
         brand:        order.brand,
+      }).catch((e) => console.error("[email]", e));
+    }
+
+    if (updateData.shipmentStatus && ["shipped", "out_for_delivery", "delivered"].includes(updateData.shipmentStatus as string)) {
+      sendShipmentUpdateEmail({
+        orderRef:      order.orderRef,
+        customerName:  order.customerName,
+        email:         order.email,
+        shipmentStatus: order.shipmentStatus as string,
+        trackingNumber: order.trackingNumber ?? undefined,
+        estimatedDelivery: order.estimatedDelivery ?? undefined,
+        brand:         order.brand,
       }).catch((e) => console.error("[email]", e));
     }
 

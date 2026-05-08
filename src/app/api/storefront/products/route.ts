@@ -65,9 +65,10 @@ export async function GET(req: NextRequest) {
           shortDescription: true,
           price:            true,
           compareAtPrice:   true,
-          stockQty:         true,
-          productType:      true,
-          isFeatured:       true,
+          stockQty:                true,
+          productType:             true,
+          isFeatured:              true,
+          forceShippingDiscussion: true,
           category:         { select: { name: true, slug: true } },
           images: {
             where:   { isPrimary: true },

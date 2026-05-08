@@ -14,6 +14,7 @@ interface CartItem {
     slug: string;
     stockQty: number;
     productType: string;
+    forceShippingDiscussion: boolean;
     images?: { imageUrl: string; altText?: string | null }[];
   };
 }
@@ -64,8 +65,10 @@ export default function CartPage() {
     }
   }
 
+  const hasForceShippingDiscussion = items.some((i) => i.product.forceShippingDiscussion);
   const subtotal = items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0);
-  const shippingFeeAmount = shipping.type === "fixed" ? shipping.amount : 0;
+  const shippingFeeAmount = (hasForceShippingDiscussion || shipping.type === "discussed") ? 0 : shipping.amount;
+  const shippingIsDiscussed = hasForceShippingDiscussion || shipping.type === "discussed";
   const total = subtotal + shippingFeeAmount;
 
   if (loading) {
@@ -170,6 +173,12 @@ export default function CartPage() {
         <div className="lg:w-72 shrink-0">
           <div className="bg-white rounded-xl border border-gray-100 p-6 sticky top-28">
             <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
+            {hasForceShippingDiscussion && (
+              <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-xs text-amber-800">
+                <p className="font-semibold">Shipping to be discussed</p>
+                <p className="mt-0.5">One or more items require manual shipping confirmation due to size or weight.</p>
+              </div>
+            )}
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-600">
                 <span>Subtotal ({items.length} items)</span>
@@ -177,7 +186,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between text-gray-600">
                 <span>Shipping</span>
-                {shipping.type === "discussed" ? (
+                {shippingIsDiscussed ? (
                   <span className="text-amber-600 font-medium text-xs leading-5">To be discussed</span>
                 ) : shippingFeeAmount === 0 ? (
                   <span className="text-green-600 font-medium">Free</span>
@@ -188,7 +197,7 @@ export default function CartPage() {
               <div className="border-t border-gray-100 pt-2 mt-2 flex justify-between font-bold text-base text-gray-900">
                 <span>Total</span>
                 <span>
-                  {shipping.type === "discussed"
+                  {shippingIsDiscussed
                     ? `${subtotal.toFixed(0)} EGP + shipping`
                     : `${total.toFixed(0)} EGP`}
                 </span>

@@ -13,6 +13,10 @@ interface Order {
   subtotal: number;
   shippingFee: number;
   total: number;
+  shipmentStatus?: string | null;
+  trackingNumber?: string | null;
+  courierName?: string | null;
+  estimatedDelivery?: string | null;
   createdAt: string;
   address?: {
     governorate: string;
@@ -28,6 +32,8 @@ interface Order {
     unitPrice: number;
     lineTotal: number;
   }[];
+  shippingMethod?: { name: string; estimatedDays: number } | null;
+  shippingZone?: { name: string; estimatedDaysMin: number; estimatedDaysMax: number } | null;
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string; step: number }> = {
@@ -35,6 +41,19 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: string
   ordered_paid: { label: "Payment Confirmed",  color: "text-green-600 bg-green-50 border-green-200", icon: "✅", step: 2 },
   delivered:    { label: "Delivered",          color: "text-indigo-600 bg-indigo-50 border-indigo-200", icon: "🎉", step: 3 },
   canceled:     { label: "Canceled",           color: "text-red-600 bg-red-50 border-red-200",       icon: "❌", step: 0 },
+};
+
+const SHIPMENT_STEPS = [
+  { status: "pending",         label: "Pending",           step: 1 },
+  { status: "confirmed",       label: "Confirmed",         step: 2 },
+  { status: "packed",          label: "Packed",            step: 3 },
+  { status: "shipped",         label: "Shipped",           step: 4 },
+  { status: "out_for_delivery", label: "Out for Delivery", step: 5 },
+  { status: "delivered",       label: "Delivered",         step: 6 },
+];
+
+const SHIPMENT_STATUS_STEP: Record<string, number> = {
+  pending: 1, confirmed: 2, packed: 3, shipped: 4, out_for_delivery: 5, delivered: 6, returned: 0, canceled: 0,
 };
 
 function TrackOrderPage() {
@@ -175,6 +194,83 @@ function TrackOrderPage() {
               </div>
             )}
           </div>
+
+          {/* Shipment status timeline */}
+          {order.shipmentStatus && !["returned", "canceled"].includes(order.shipmentStatus) && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="font-bold text-gray-900 mb-5">Shipment Progress</h3>
+              <div className="relative">
+                <div className="flex items-start justify-between gap-1">
+                  {SHIPMENT_STEPS.map((step, i) => {
+                    const currentStep = SHIPMENT_STATUS_STEP[order.shipmentStatus ?? ""] ?? 0;
+                    const done = currentStep >= step.step;
+                    const active = currentStep === step.step;
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs border-2 flex-shrink-0 transition-all ${
+                          done ? "bg-indigo-600 border-indigo-600 text-white" : active ? "bg-white border-indigo-400 text-indigo-600" : "bg-white border-gray-200 text-gray-300"
+                        }`}>
+                          {done && !active ? "✓" : step.step}
+                        </div>
+                        <span className={`text-xs font-medium text-center leading-tight ${done ? "text-indigo-600" : "text-gray-400"}`}>
+                          {step.label}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="absolute top-3.5 left-3.5 right-3.5 h-0.5 bg-gray-200 -z-0">
+                  <div className="h-full bg-indigo-600 transition-all"
+                    style={{ width: `${Math.max(0, ((SHIPMENT_STATUS_STEP[order.shipmentStatus ?? ""] ?? 1) - 1) / 5 * 100)}%` }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Tracking info */}
+          {(order.trackingNumber || order.courierName || order.estimatedDelivery || order.shippingMethod || order.shippingZone) && (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+              <h3 className="font-bold text-gray-900 mb-3">Shipping Details</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                {order.shippingZone && (
+                  <div>
+                    <p className="text-xs text-gray-500">Zone</p>
+                    <p className="font-medium text-gray-900">{order.shippingZone.name}</p>
+                  </div>
+                )}
+                {order.shippingMethod && (
+                  <div>
+                    <p className="text-xs text-gray-500">Method</p>
+                    <p className="font-medium text-gray-900">{order.shippingMethod.name}</p>
+                  </div>
+                )}
+                {order.courierName && (
+                  <div>
+                    <p className="text-xs text-gray-500">Courier</p>
+                    <p className="font-medium text-gray-900">{order.courierName}</p>
+                  </div>
+                )}
+                {order.trackingNumber && (
+                  <div>
+                    <p className="text-xs text-gray-500">Tracking #</p>
+                    <p className="font-mono font-medium text-gray-900 break-all">{order.trackingNumber}</p>
+                  </div>
+                )}
+                {order.estimatedDelivery && (
+                  <div className="col-span-2">
+                    <p className="text-xs text-gray-500">Estimated Delivery</p>
+                    <p className="font-medium text-gray-900">{new Date(order.estimatedDelivery).toLocaleDateString("en-EG", { dateStyle: "long" })}</p>
+                  </div>
+                )}
+                {Number(order.shippingFee) > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500">Shipping Fee</p>
+                    <p className="font-medium text-gray-900">{Number(order.shippingFee).toFixed(0)} EGP</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Order items */}
           {order.items && order.items.length > 0 && (

@@ -11,12 +11,13 @@ const cartItemSelect = {
   unitPrice: true,
   product: {
     select: {
-      id:          true,
-      name:        true,
-      slug:        true,
-      stockQty:    true,
-      productType: true,
-      isActive:    true,
+      id:                      true,
+      name:                    true,
+      slug:                    true,
+      stockQty:                true,
+      productType:             true,
+      isActive:                true,
+      forceShippingDiscussion: true,
       images: {
         where:  { isPrimary: true },
         select: { imageUrl: true, altText: true },

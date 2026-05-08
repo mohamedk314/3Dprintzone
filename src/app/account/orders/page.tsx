@@ -14,11 +14,29 @@ const STATUS_COLORS: Record<string, string> = {
   canceled:     "bg-red-100 text-red-700",
 };
 
+const SHIPMENT_LABELS: Record<string, string> = {
+  pending: "Pending", confirmed: "Confirmed", packed: "Packed",
+  shipped: "Shipped", out_for_delivery: "Out for Delivery",
+  delivered: "Delivered", returned: "Returned", canceled: "Canceled",
+};
+const SHIPMENT_COLORS: Record<string, string> = {
+  pending: "bg-gray-100 text-gray-600", confirmed: "bg-blue-100 text-blue-700",
+  packed: "bg-amber-100 text-amber-700", shipped: "bg-indigo-100 text-indigo-700",
+  out_for_delivery: "bg-orange-100 text-orange-700", delivered: "bg-green-100 text-green-700",
+  returned: "bg-red-100 text-red-700", canceled: "bg-red-100 text-red-700",
+};
+
 interface Order {
   id: string; orderRef: string; status: string; paymentMethod: string;
   total: number; brand: string; createdAt: string;
+  shipmentStatus?: string | null;
+  trackingNumber?: string | null;
+  courierName?: string | null;
+  estimatedDelivery?: string | null;
   items: { productName: string; qty: number }[];
   address?: { governorate: string; city: string; addressLine1: string } | null;
+  shippingMethod?: { name: string } | null;
+  shippingZone?: { name: string } | null;
 }
 
 export default function AccountOrdersPage() {
@@ -84,9 +102,16 @@ export default function AccountOrdersPage() {
                     <span className="capitalize">{order.brand === "rayk" ? "RAYK" : "3Dprintzone"}</span>
                   </p>
                 </div>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
-                  {STATUS_LABELS[order.status] ?? order.status}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
+                    {STATUS_LABELS[order.status] ?? order.status}
+                  </span>
+                  {order.shipmentStatus && (
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${SHIPMENT_COLORS[order.shipmentStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                      {SHIPMENT_LABELS[order.shipmentStatus] ?? order.shipmentStatus}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="text-sm text-gray-700 mb-3">
                 {order.items.map((item, i) => (
@@ -94,7 +119,18 @@ export default function AccountOrdersPage() {
                 ))}
               </div>
               {order.address && (
-                <p className="text-xs text-gray-400 mb-3">{order.address.addressLine1}, {order.address.city}, {order.address.governorate}</p>
+                <p className="text-xs text-gray-400 mb-2">{order.address.addressLine1}, {order.address.city}, {order.address.governorate}</p>
+              )}
+              {(order.shippingMethod || order.shippingZone) && (
+                <p className="text-xs text-gray-400 mb-2">
+                  {[order.shippingZone?.name, order.shippingMethod?.name].filter(Boolean).join(" · ")}
+                </p>
+              )}
+              {order.trackingNumber && (
+                <p className="text-xs text-indigo-600 mb-2 font-mono">Tracking: {order.trackingNumber}{order.courierName ? ` (${order.courierName})` : ""}</p>
+              )}
+              {order.estimatedDelivery && (
+                <p className="text-xs text-gray-500 mb-2">Est. delivery: {new Date(order.estimatedDelivery).toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" })}</p>
               )}
               <div className="flex items-center justify-between pt-3 border-t border-gray-50">
                 <p className="text-sm font-semibold text-gray-900">{Number(order.total).toFixed(0)} EGP</p>

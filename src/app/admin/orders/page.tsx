@@ -11,6 +11,7 @@ interface Order {
   email: string;
   phone: string;
   status: string;
+  shipmentStatus: string | null;
   paymentMethod: string;
   total: number;
   brand: string;
@@ -43,6 +44,23 @@ const STATUS_COLORS: Record<string, string> = {
 
 const STATUS_LABELS: Record<string, string> = {
   ordered_cod: "COD", ordered_paid: "Paid", delivered: "Delivered", canceled: "Canceled",
+};
+
+const SHIPMENT_LABELS: Record<string, string> = {
+  pending: "Pending", confirmed: "Confirmed", packed: "Packed",
+  shipped: "Shipped", out_for_delivery: "Out for Delivery",
+  delivered: "Delivered", returned: "Returned", canceled: "Canceled",
+};
+
+const SHIPMENT_COLORS: Record<string, string> = {
+  pending:          "bg-gray-100 text-gray-600",
+  confirmed:        "bg-blue-100 text-blue-700",
+  packed:           "bg-amber-100 text-amber-700",
+  shipped:          "bg-indigo-100 text-indigo-700",
+  out_for_delivery: "bg-orange-100 text-orange-700",
+  delivered:        "bg-green-100 text-green-700",
+  returned:         "bg-red-100 text-red-700",
+  canceled:         "bg-red-100 text-red-700",
 };
 
 function OrdersPageInner() {
@@ -128,6 +146,7 @@ function OrdersPageInner() {
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Items</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Total</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+                    <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Shipment</th>
                     <th className="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Date</th>
                     <th className="text-right px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Action</th>
                   </tr>
@@ -149,6 +168,15 @@ function OrdersPageInner() {
                         <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[order.status] ?? "bg-gray-100 text-gray-600"}`}>
                           {STATUS_LABELS[order.status] ?? order.status}
                         </span>
+                      </td>
+                      <td className="px-5 py-3">
+                        {order.shipmentStatus ? (
+                          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SHIPMENT_COLORS[order.shipmentStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                            {SHIPMENT_LABELS[order.shipmentStatus] ?? order.shipmentStatus}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
                       </td>
                       <td className="px-5 py-3 text-xs text-gray-500">
                         {new Date(order.createdAt).toLocaleDateString("en-EG")}

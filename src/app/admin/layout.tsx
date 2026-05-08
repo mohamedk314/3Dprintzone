@@ -64,6 +64,14 @@ const NAV_ITEMS = [
     ),
   },
   {
+    href: "/admin/shipping/zones", label: "Shipping", exact: false, superOnly: false,
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+      </svg>
+    ),
+  },
+  {
     href: "/admin/settings", label: "Settings", exact: false, superOnly: false,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +138,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   function isActive(item: { href: string; exact: boolean }) {
-    return item.exact ? pathname === item.href : pathname.startsWith(item.href);
+    if (item.exact) return pathname === item.href;
+    if (item.href === "/admin/shipping/zones") return pathname.startsWith("/admin/shipping");
+    return pathname.startsWith(item.href);
   }
 
   return (

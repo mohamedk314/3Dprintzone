@@ -11,6 +11,10 @@ interface Order {
   id: string; orderRef: string; customerName: string; email: string; phone: string;
   status: string; paymentMethod: string; subtotal: number; shippingFee: number; total: number;
   notes: string | null; createdAt: string; updatedAt: string; brand: string;
+  shipmentStatus: string | null; trackingNumber: string | null; courierName: string | null;
+  estimatedDelivery: string | null;
+  shippingMethod: { id: string; name: string; estimatedDays: number } | null;
+  shippingZone: { id: string; name: string; estimatedDaysMin: number; estimatedDaysMax: number } | null;
   address: Address | null; items: OrderItem[];
 }
 
@@ -21,11 +25,34 @@ const STATUS_OPTIONS = [
   { value: "canceled",     label: "Canceled" },
 ];
 
+const SHIPMENT_STATUS_OPTIONS = [
+  { value: "",              label: "Not set" },
+  { value: "pending",       label: "Pending" },
+  { value: "confirmed",     label: "Confirmed" },
+  { value: "packed",        label: "Packed" },
+  { value: "shipped",       label: "Shipped" },
+  { value: "out_for_delivery", label: "Out for Delivery" },
+  { value: "delivered",     label: "Delivered" },
+  { value: "returned",      label: "Returned" },
+  { value: "canceled",      label: "Canceled" },
+];
+
 const STATUS_COLORS: Record<string, string> = {
   ordered_cod:  "bg-blue-100 text-blue-700",
   ordered_paid: "bg-green-100 text-green-700",
   delivered:    "bg-indigo-100 text-indigo-700",
   canceled:     "bg-red-100 text-red-700",
+};
+
+const SHIPMENT_COLORS: Record<string, string> = {
+  pending:         "bg-gray-100 text-gray-600",
+  confirmed:       "bg-blue-100 text-blue-700",
+  packed:          "bg-amber-100 text-amber-700",
+  shipped:         "bg-indigo-100 text-indigo-700",
+  out_for_delivery: "bg-orange-100 text-orange-700",
+  delivered:       "bg-green-100 text-green-700",
+  returned:        "bg-red-100 text-red-700",
+  canceled:        "bg-red-100 text-red-700",
 };
 
 export default function AdminOrderDetailPage() {
@@ -37,6 +64,10 @@ export default function AdminOrderDetailPage() {
   const [newStatus, setNewStatus] = useState("");
   const [newNotes, setNewNotes] = useState("");
   const [newShippingFee, setNewShippingFee] = useState("");
+  const [newShipmentStatus, setNewShipmentStatus] = useState("");
+  const [newTrackingNumber, setNewTrackingNumber] = useState("");
+  const [newCourierName, setNewCourierName] = useState("");
+  const [newEstimatedDelivery, setNewEstimatedDelivery] = useState("");
   const [updating, setUpdating] = useState(false);
   const [updateMsg, setUpdateMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [downloading, setDownloading] = useState(false);
@@ -57,6 +88,10 @@ export default function AdminOrderDetailPage() {
         setNewStatus(o?.status ?? "");
         setNewNotes(o?.notes ?? "");
         setNewShippingFee(String(o?.shippingFee ?? "0"));
+        setNewShipmentStatus(o?.shipmentStatus ?? "");
+        setNewTrackingNumber(o?.trackingNumber ?? "");
+        setNewCourierName(o?.courierName ?? "");
+        setNewEstimatedDelivery(o?.estimatedDelivery ? new Date(o.estimatedDelivery).toISOString().split("T")[0] : "");
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -71,6 +106,11 @@ export default function AdminOrderDetailPage() {
       if (newStatus !== order.status) body.status = newStatus;
       if (newNotes !== (order.notes ?? "")) body.notes = newNotes;
       if (Number(newShippingFee) !== Number(order.shippingFee)) body.shippingFee = Number(newShippingFee);
+      if (newShipmentStatus !== (order.shipmentStatus ?? "")) body.shipmentStatus = newShipmentStatus || null;
+      if (newTrackingNumber !== (order.trackingNumber ?? "")) body.trackingNumber = newTrackingNumber;
+      if (newCourierName !== (order.courierName ?? "")) body.courierName = newCourierName;
+      const existingDelivery = order.estimatedDelivery ? new Date(order.estimatedDelivery).toISOString().split("T")[0] : "";
+      if (newEstimatedDelivery !== existingDelivery) body.estimatedDelivery = newEstimatedDelivery || null;
 
       if (Object.keys(body).length === 0) { setUpdateMsg({ text: "No changes made.", ok: true }); setUpdating(false); return; }
 
@@ -85,6 +125,10 @@ export default function AdminOrderDetailPage() {
         setNewStatus(data.data.status);
         setNewNotes(data.data.notes ?? "");
         setNewShippingFee(String(data.data.shippingFee));
+        setNewShipmentStatus(data.data.shipmentStatus ?? "");
+        setNewTrackingNumber(data.data.trackingNumber ?? "");
+        setNewCourierName(data.data.courierName ?? "");
+        setNewEstimatedDelivery(data.data.estimatedDelivery ? new Date(data.data.estimatedDelivery).toISOString().split("T")[0] : "");
         setUpdateMsg({ text: "Order updated successfully.", ok: true });
       } else {
         setUpdateMsg({ text: data.message || "Update failed.", ok: false });
@@ -183,6 +227,53 @@ export default function AdminOrderDetailPage() {
         </div>
       </div>
 
+      {/* Shipping & Shipment Info */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h2 className="font-semibold text-gray-900 text-sm mb-3">Shipping & Shipment</h2>
+        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+          {order.shippingZone && (
+            <div>
+              <dt className="text-xs text-gray-500">Zone</dt>
+              <dd className="font-medium text-gray-900">{order.shippingZone.name}</dd>
+            </div>
+          )}
+          {order.shippingMethod && (
+            <div>
+              <dt className="text-xs text-gray-500">Method</dt>
+              <dd className="font-medium text-gray-900">{order.shippingMethod.name}</dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-xs text-gray-500">Shipment Status</dt>
+            <dd>
+              {order.shipmentStatus ? (
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${SHIPMENT_COLORS[order.shipmentStatus] ?? "bg-gray-100 text-gray-600"}`}>
+                  {SHIPMENT_STATUS_OPTIONS.find((s) => s.value === order.shipmentStatus)?.label ?? order.shipmentStatus}
+                </span>
+              ) : <span className="text-gray-400">Not set</span>}
+            </dd>
+          </div>
+          {order.trackingNumber && (
+            <div>
+              <dt className="text-xs text-gray-500">Tracking #</dt>
+              <dd className="font-mono font-medium text-gray-900">{order.trackingNumber}</dd>
+            </div>
+          )}
+          {order.courierName && (
+            <div>
+              <dt className="text-xs text-gray-500">Courier</dt>
+              <dd className="font-medium text-gray-900">{order.courierName}</dd>
+            </div>
+          )}
+          {order.estimatedDelivery && (
+            <div>
+              <dt className="text-xs text-gray-500">Est. Delivery</dt>
+              <dd className="font-medium text-gray-900">{new Date(order.estimatedDelivery).toLocaleDateString("en-EG", { dateStyle: "medium" })}</dd>
+            </div>
+          )}
+        </dl>
+      </div>
+
       {/* Order Items */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100">
@@ -234,12 +325,44 @@ export default function AdminOrderDetailPage() {
           <form onSubmit={handleUpdate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-gray-700 mb-1 block">Status</label>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Order Status</label>
                 <select value={newStatus} onChange={(e) => setNewStatus(e.target.value)}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 bg-white"
                 >
                   {STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Shipment Status</label>
+                <select value={newShipmentStatus} onChange={(e) => setNewShipmentStatus(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+                >
+                  {SHIPMENT_STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Tracking Number</label>
+                <input type="text" value={newTrackingNumber} onChange={(e) => setNewTrackingNumber(e.target.value)}
+                  placeholder="e.g. 1Z999AA10123456784"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400 font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Courier Name</label>
+                <input type="text" value={newCourierName} onChange={(e) => setNewCourierName(e.target.value)}
+                  placeholder="e.g. Bosta, Aramex, DHL"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-medium text-gray-700 mb-1 block">Estimated Delivery Date</label>
+                <input type="date" value={newEstimatedDelivery} onChange={(e) => setNewEstimatedDelivery(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-400"
+                />
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-700 mb-1 block">Shipping Fee (EGP)</label>
