@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -86,14 +87,16 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
       {/* Image */}
       <Link href={`/product/${product.slug}`} className="block relative aspect-square bg-gray-50 overflow-hidden">
         {image?.imageUrl ? (
-          <img
+          <Image
             src={image.imageUrl}
             alt={image.altText || product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -105,12 +108,12 @@ export default function ProductCard({ product }: { product: Product }) {
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {discount > 0 && (
-            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
               -{discount}%
             </span>
           )}
           {product.isFeatured && (
-            <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
               Featured
             </span>
           )}
@@ -119,7 +122,7 @@ export default function ProductCard({ product }: { product: Product }) {
         <button
           onClick={toggleWishlist}
           disabled={togglingWishlist}
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all ${
+          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-110 active:scale-95 ${
             wishlisted
               ? "bg-red-500 text-white"
               : "bg-white text-gray-400 hover:text-red-500 hover:bg-red-50"
@@ -134,7 +137,7 @@ export default function ProductCard({ product }: { product: Product }) {
       {/* Info */}
       <div className="p-3">
         {product.category && (
-          <Link href={`/category/${product.category.slug}`} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mb-1 block">
+          <Link href={`/category/${product.category.slug}`} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mb-1 block transition-colors">
             {product.category.name}
           </Link>
         )}
@@ -148,15 +151,15 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         {/* Price + stock */}
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-gray-900">{Number(product.price).toFixed(0)} EGP</span>
+        <div className="mt-2 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="font-bold text-gray-900 text-sm">{Number(product.price).toFixed(0)} EGP</span>
             {product.compareAtPrice && (
-              <span className="text-xs text-gray-400 line-through">{Number(product.compareAtPrice).toFixed(0)} EGP</span>
+              <span className="text-xs text-gray-400 line-through truncate">{Number(product.compareAtPrice).toFixed(0)} EGP</span>
             )}
           </div>
           {product.productType === "physical" && (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+            <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
               isOutOfStock ? "bg-red-50 text-red-500" : product.stockQty <= 5 ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
             }`}>
               {isOutOfStock ? "Out of stock" : product.stockQty <= 5 ? `${product.stockQty} left` : "In stock"}
@@ -168,12 +171,12 @@ export default function ProductCard({ product }: { product: Product }) {
         <button
           onClick={addToCart}
           disabled={isOutOfStock || addingToCart}
-          className={`mt-2.5 w-full py-2 rounded-lg text-sm font-semibold transition-all ${
+          className={`mt-2.5 w-full py-2 rounded-lg text-sm font-semibold transition-all duration-150 active:scale-[0.97] ${
             isOutOfStock
               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
               : cartMsg === "Added!"
               ? "bg-green-500 text-white"
-              : "bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95"
+              : "bg-indigo-600 text-white hover:bg-indigo-700"
           }`}
         >
           {addingToCart ? "Adding..." : cartMsg || (isOutOfStock ? "Out of Stock" : "Add to Cart")}

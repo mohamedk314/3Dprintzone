@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import ProductCard from "@/components/ui/ProductCard";
 
 interface Product {
@@ -20,6 +21,19 @@ const SORT_OPTIONS = [
   { value: "price_desc", label: "Price: High to Low" },
   { value: "name_asc", label: "Name A–Z" },
 ];
+
+function ProductSkeleton() {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+      <div className="aspect-square bg-gray-200" />
+      <div className="p-3 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-4/5" />
+        <div className="h-3 bg-gray-200 rounded w-2/3" />
+        <div className="h-8 bg-gray-200 rounded mt-2" />
+      </div>
+    </div>
+  );
+}
 
 function ShopPage() {
   const router = useRouter();
@@ -79,22 +93,24 @@ function ShopPage() {
     router.push(buildUrl({ [key]: value, page: "1" }));
   }
 
+  const hasActiveFilters = !!(search || category || minPrice || maxPrice || inStock === "true");
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <div className="flex-1">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
             {search ? `Results for "${search}"` : category ? `${categories.find((c) => c.slug === category)?.name || "Category"}` : "All Products"}
           </h1>
           {meta && <p className="text-sm text-gray-500 mt-0.5">{meta.total} products</p>}
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-sm text-gray-600 shrink-0">Sort by:</label>
+          <label className="text-sm text-gray-600 shrink-0">Sort:</label>
           <select
             value={sort}
             onChange={(e) => setParam("sort", e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-400 bg-white"
+            className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-400 bg-white transition-colors"
           >
             {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
@@ -137,17 +153,17 @@ function ShopPage() {
             <div className="flex gap-2 items-center mb-2">
               <input type="number" min={0} placeholder="Min" value={minPriceInput}
                 onChange={(e) => setMinPriceInput(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-400"
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-400 transition-colors"
               />
               <span className="text-gray-400 text-xs shrink-0">–</span>
               <input type="number" min={0} placeholder="Max" value={maxPriceInput}
                 onChange={(e) => setMaxPriceInput(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-400"
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-indigo-400 transition-colors"
               />
             </div>
             <button
               onClick={() => router.push(buildUrl({ minPrice: minPriceInput, maxPrice: maxPriceInput, page: "1" }))}
-              className="w-full bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-indigo-700 transition-colors"
+              className="w-full bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-indigo-700 transition-colors active:scale-[0.97]"
             >
               Apply
             </button>
@@ -174,7 +190,7 @@ function ShopPage() {
         </aside>
 
         {/* Products grid */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {/* Mobile category chips */}
           <div className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
             <button
@@ -199,29 +215,36 @@ function ShopPage() {
           </div>
 
           {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              {Array.from({ length: 12 }).map((_, i) => (
-                <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
-                  <div className="aspect-square bg-gray-200" />
-                  <div className="p-3 space-y-2">
-                    <div className="h-4 bg-gray-200 rounded w-4/5" />
-                    <div className="h-3 bg-gray-200 rounded w-2/3" />
-                    <div className="h-8 bg-gray-200 rounded mt-2" />
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              {Array.from({ length: 12 }).map((_, i) => <ProductSkeleton key={i} />)}
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-20 text-gray-500">
+            <div className="text-center py-16 text-gray-500">
               <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <p className="font-medium">No products found</p>
-              <p className="text-sm mt-1">Try adjusting your search or filters</p>
+              <p className="font-semibold text-gray-700 mb-1">No products found</p>
+              <p className="text-sm text-gray-400 mb-6">Try adjusting your search or filters</p>
+              {hasActiveFilters && (
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <button
+                    onClick={() => router.push("/shop")}
+                    className="inline-block bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-full hover:bg-indigo-700 transition-colors text-sm active:scale-[0.97]"
+                  >
+                    Clear all filters
+                  </button>
+                  <Link
+                    href="/shop"
+                    className="inline-block border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-full hover:bg-gray-50 transition-colors text-sm"
+                  >
+                    Browse all products
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                 {products.map((p) => <ProductCard key={p.id} product={p} />)}
               </div>
 
@@ -230,7 +253,7 @@ function ShopPage() {
                   <button
                     onClick={() => setParam("page", String(page - 1))}
                     disabled={page <= 1}
-                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors active:scale-[0.97]"
                   >
                     ← Prev
                   </button>
@@ -240,7 +263,7 @@ function ShopPage() {
                   <button
                     onClick={() => setParam("page", String(page + 1))}
                     disabled={page >= meta.pages}
-                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors"
+                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors active:scale-[0.97]"
                   >
                     Next →
                   </button>

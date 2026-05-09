@@ -12,6 +12,19 @@ interface Product {
   images?: { imageUrl: string; altText?: string | null }[];
 }
 
+function RaykProductSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="aspect-[3/4] bg-gray-100" />
+      <div className="p-3 space-y-2">
+        <div className="h-3 bg-gray-100 rounded w-3/4" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-8 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
 export default function RaykCategoryPageClient() {
   const { slug } = useParams<{ slug: string }>();
   const [name, setName] = useState("");
@@ -41,20 +54,15 @@ export default function RaykCategoryPageClient() {
 
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="animate-pulse">
-              <div className="aspect-[3/4] bg-gray-100" />
-              <div className="p-3 space-y-2">
-                <div className="h-3 bg-gray-100 rounded w-3/4" />
-                <div className="h-3 bg-gray-100 rounded w-1/2" />
-              </div>
-            </div>
-          ))}
+          {Array.from({ length: 8 }).map((_, i) => <RaykProductSkeleton key={i} />)}
         </div>
       ) : products.length === 0 ? (
-        <div className="py-20 text-center">
-          <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/20 mb-3">Empty</p>
-          <p className="text-sm text-black/40">No products in this category yet.</p>
+        <div className="py-20 text-center border border-black/5">
+          <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/20 mb-2">No products yet</p>
+          <p className="text-sm text-black/40 mb-8 tracking-wide">This collection is empty for now</p>
+          <Link href="/rayk/shop" className="text-xs font-semibold tracking-widest uppercase text-black border border-black px-8 py-3 hover:bg-black hover:text-white transition-colors">
+            Browse All Products
+          </Link>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">

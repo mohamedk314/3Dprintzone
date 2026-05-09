@@ -13,6 +13,28 @@ interface Product {
   images?: { imageUrl: string; altText?: string | null }[];
 }
 
+function RaykProductSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="aspect-[3/4] bg-gray-100" />
+      <div className="p-3 space-y-2">
+        <div className="h-3 bg-gray-100 rounded w-3/4" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-8 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
+function RaykCategorySkeleton() {
+  return (
+    <div className="bg-white p-6 animate-pulse">
+      <div className="h-3 bg-gray-100 rounded w-3/4 mx-auto" />
+      <div className="h-2.5 bg-gray-100 rounded w-1/3 mx-auto mt-2" />
+    </div>
+  );
+}
+
 export default function RaykHomePageClient() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
@@ -32,8 +54,8 @@ export default function RaykHomePageClient() {
     <div>
       {/* Hero */}
       <section className="bg-black text-white">
-        <div className="max-w-7xl mx-auto px-4 py-24 md:py-36 flex flex-col items-center text-center">
-          <div className="relative w-72 h-40 sm:w-[26rem] sm:h-56 md:w-[40rem] md:h-72 mb-8">
+        <div className="max-w-7xl mx-auto px-4 py-20 md:py-36 flex flex-col items-center text-center">
+          <div className="relative w-64 h-36 sm:w-[26rem] sm:h-56 md:w-[40rem] md:h-72 mb-8">
             <Image
               src="/brands/rayk-logo.png"
               alt="RAYK"
@@ -46,33 +68,39 @@ export default function RaykHomePageClient() {
           <p className="text-white/60 text-sm md:text-base max-w-xs mx-auto mb-10 tracking-[0.15em] lowercase">
             your 3d printed gifts
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Link
-              href="/rayk/shop"
-              className="border border-white text-white font-semibold tracking-widest uppercase text-xs px-10 py-3.5 hover:bg-white hover:text-black transition-colors"
-            >
-              Shop Now
-            </Link>
-          </div>
+          <Link
+            href="/rayk/shop"
+            className="border border-white text-white font-semibold tracking-widest uppercase text-xs px-10 py-3.5 hover:bg-white hover:text-black transition-colors duration-150 active:scale-[0.97]"
+          >
+            Shop Now
+          </Link>
         </div>
       </section>
 
-      <div className="max-w-7xl mx-auto px-4 py-16 space-y-20">
+      <div className="max-w-7xl mx-auto px-4 py-14 sm:py-16 space-y-16 sm:space-y-20">
         {/* Categories */}
-        {categories.length > 0 && (
-          <section>
-            <div className="flex items-baseline justify-between mb-8">
-              <h2 className="text-xs font-semibold tracking-[0.3em] uppercase text-black/50">Shop by Category</h2>
-              <Link href="/rayk/shop" className="text-xs tracking-widest uppercase text-black hover:underline underline-offset-4">
-                View All
-              </Link>
+        <section>
+          <div className="flex items-baseline justify-between mb-8">
+            <h2 className="text-xs font-semibold tracking-[0.3em] uppercase text-black/50">Shop by Category</h2>
+            <Link href="/rayk/shop" className="text-xs tracking-widest uppercase text-black hover:underline underline-offset-4 transition-colors">
+              View All
+            </Link>
+          </div>
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-px bg-black/5">
+              {Array.from({ length: 6 }).map((_, i) => <RaykCategorySkeleton key={i} />)}
             </div>
+          ) : categories.length === 0 ? (
+            <div className="py-10 text-center">
+              <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/20">No categories yet</p>
+            </div>
+          ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-px bg-black/5">
               {categories.slice(0, 6).map((cat) => (
                 <Link
                   key={cat.id}
                   href={`/rayk/category/${cat.slug}`}
-                  className="group bg-white p-6 text-center hover:bg-black hover:text-white transition-colors"
+                  className="group bg-white p-6 text-center hover:bg-black hover:text-white transition-colors duration-200"
                 >
                   <p className="text-xs font-semibold tracking-widest uppercase text-inherit leading-tight">{cat.name}</p>
                   {cat._count && (
@@ -81,29 +109,21 @@ export default function RaykHomePageClient() {
                 </Link>
               ))}
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
         {/* Featured Products */}
         {(loading || featured.length > 0) && (
           <section>
             <div className="flex items-baseline justify-between mb-8">
               <h2 className="text-xs font-semibold tracking-[0.3em] uppercase text-black/50">Featured</h2>
-              <Link href="/rayk/shop" className="text-xs tracking-widest uppercase text-black hover:underline underline-offset-4">
+              <Link href="/rayk/shop" className="text-xs tracking-widest uppercase text-black hover:underline underline-offset-4 transition-colors">
                 View All
               </Link>
             </div>
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="aspect-[3/4] bg-gray-100" />
-                    <div className="p-3 space-y-2">
-                      <div className="h-3 bg-gray-100 rounded w-3/4" />
-                      <div className="h-3 bg-gray-100 rounded w-1/2" />
-                    </div>
-                  </div>
-                ))}
+                {Array.from({ length: 8 }).map((_, i) => <RaykProductSkeleton key={i} />)}
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
@@ -113,12 +133,15 @@ export default function RaykHomePageClient() {
           </section>
         )}
 
-        {/* Empty state */}
+        {/* Empty state — no products or categories after loading */}
         {!loading && categories.length === 0 && featured.length === 0 && (
-          <section className="py-20 text-center">
+          <section className="py-20 text-center border border-black/5 rounded-sm">
             <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/30 mb-4">Coming Soon</p>
-            <h2 className="text-3xl font-bold tracking-tight mb-4">RAYK is launching soon.</h2>
-            <p className="text-black/40 text-sm tracking-wide">Check back soon for new arrivals.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-4">RAYK is launching soon.</h2>
+            <p className="text-black/40 text-sm tracking-wide mb-8">Check back soon for new arrivals.</p>
+            <Link href="/" className="text-xs font-semibold tracking-widest uppercase text-black hover:underline underline-offset-4">
+              Visit 3Dprintzone →
+            </Link>
           </section>
         )}
       </div>

@@ -15,6 +15,19 @@ interface Product {
 interface Category { id: string; name: string; slug: string }
 interface Meta { total: number; page: number; pages: number }
 
+function RaykProductSkeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="aspect-[3/4] bg-gray-100" />
+      <div className="p-3 space-y-2">
+        <div className="h-3 bg-gray-100 rounded w-3/4" />
+        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-8 bg-gray-100 rounded" />
+      </div>
+    </div>
+  );
+}
+
 function RaykShopInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,9 +65,11 @@ function RaykShopInner() {
       .finally(() => setLoading(false));
   }, [search, category, sort, page]);
 
+  const hasActiveFilters = !!(search || category);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="mb-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10">
+      <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight">Shop</h1>
         {meta && <p className="text-xs text-black/40 tracking-widest uppercase mt-1">{meta.total} products</p>}
       </div>
@@ -67,7 +82,7 @@ function RaykShopInner() {
             <ul className="space-y-1 text-sm">
               <li>
                 <button onClick={() => setParam("category", "")}
-                  className={`text-left w-full tracking-wide py-1 ${!category ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
+                  className={`text-left w-full tracking-wide py-1 transition-colors ${!category ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
                 >
                   All
                 </button>
@@ -75,7 +90,7 @@ function RaykShopInner() {
               {categories.map((c) => (
                 <li key={c.id}>
                   <button onClick={() => setParam("category", c.slug)}
-                    className={`text-left w-full tracking-wide py-1 ${category === c.slug ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
+                    className={`text-left w-full tracking-wide py-1 transition-colors ${category === c.slug ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
                   >
                     {c.name}
                   </button>
@@ -93,7 +108,7 @@ function RaykShopInner() {
               ].map((s) => (
                 <li key={s.value}>
                   <button onClick={() => setParam("sort", s.value)}
-                    className={`text-left w-full tracking-wide py-1 ${sort === s.value ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
+                    className={`text-left w-full tracking-wide py-1 transition-colors ${sort === s.value ? "font-semibold text-black" : "text-black/50 hover:text-black"}`}
                   >
                     {s.label}
                   </button>
@@ -104,37 +119,64 @@ function RaykShopInner() {
         </aside>
 
         {/* Products */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <form onSubmit={(e) => { e.preventDefault(); setParam("search", searchInput); }} className="flex gap-2 mb-6">
             <input type="text" value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
               placeholder="Search products..."
-              className="flex-1 border border-black/20 px-3 py-2 text-sm focus:outline-none focus:border-black tracking-wide"
+              className="flex-1 border border-black/20 px-3 py-2 text-sm focus:outline-none focus:border-black tracking-wide transition-colors"
             />
-            <button type="submit" className="border border-black px-5 py-2 text-xs font-semibold tracking-widest uppercase hover:bg-black hover:text-white transition-colors">
+            <button type="submit" className="border border-black px-5 py-2 text-xs font-semibold tracking-widest uppercase hover:bg-black hover:text-white transition-colors active:scale-[0.97]">
               Search
             </button>
             {search && (
               <button type="button" onClick={() => { setSearchInput(""); setParam("search", ""); }}
-                className="text-xs text-black/40 hover:text-black px-2">Clear</button>
+                className="text-xs text-black/40 hover:text-black px-2 transition-colors">Clear</button>
             )}
           </form>
 
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="animate-pulse">
-                  <div className="aspect-[3/4] bg-gray-100" />
-                  <div className="p-3 space-y-2">
-                    <div className="h-3 bg-gray-100 rounded w-3/4" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                  </div>
-                </div>
+          {/* Mobile category chips */}
+          {categories.length > 0 && (
+            <div className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-4">
+              <button
+                onClick={() => setParam("category", "")}
+                className={`shrink-0 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase border transition-colors ${!category ? "bg-black text-white border-black" : "border-black/20 text-black/50"}`}
+              >
+                All
+              </button>
+              {categories.map((c) => (
+                <button key={c.id}
+                  onClick={() => setParam("category", c.slug)}
+                  className={`shrink-0 px-3 py-1.5 text-xs font-semibold tracking-widest uppercase border transition-colors ${category === c.slug ? "bg-black text-white border-black" : "border-black/20 text-black/50"}`}
+                >
+                  {c.name}
+                </button>
               ))}
             </div>
+          )}
+
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {Array.from({ length: 9 }).map((_, i) => <RaykProductSkeleton key={i} />)}
+            </div>
           ) : products.length === 0 ? (
-            <div className="py-20 text-center">
-              <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/20 mb-3">No results</p>
-              <p className="text-sm text-black/40">Try a different search or category.</p>
+            <div className="py-20 text-center border border-black/5">
+              <p className="text-xs font-semibold tracking-[0.3em] uppercase text-black/20 mb-2">No results</p>
+              <p className="text-sm text-black/40 mb-8 tracking-wide">
+                {hasActiveFilters ? "Try a different search or category" : "No products available yet"}
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={() => { setSearchInput(""); router.push("/rayk/shop"); }}
+                  className="text-xs font-semibold tracking-widest uppercase text-black border border-black px-8 py-3 hover:bg-black hover:text-white transition-colors"
+                >
+                  Clear filters
+                </button>
+              )}
+              {!hasActiveFilters && (
+                <Link href="/rayk" className="text-xs font-semibold tracking-widest uppercase text-black hover:underline underline-offset-4">
+                  Back to Home
+                </Link>
+              )}
             </div>
           ) : (
             <>
@@ -146,12 +188,12 @@ function RaykShopInner() {
                   <p className="text-xs text-black/30 tracking-widest uppercase">Page {meta.page} of {meta.pages}</p>
                   <div className="flex gap-2">
                     <button onClick={() => setParam("page", String(page - 1))} disabled={page <= 1}
-                      className="border border-black/20 px-4 py-2 text-xs tracking-widest uppercase disabled:opacity-30 hover:bg-black hover:text-white hover:border-black transition-colors"
+                      className="border border-black/20 px-4 py-2 text-xs tracking-widest uppercase disabled:opacity-30 hover:bg-black hover:text-white hover:border-black transition-colors active:scale-[0.97]"
                     >
                       Prev
                     </button>
                     <button onClick={() => setParam("page", String(page + 1))} disabled={page >= meta.pages}
-                      className="border border-black/20 px-4 py-2 text-xs tracking-widest uppercase disabled:opacity-30 hover:bg-black hover:text-white hover:border-black transition-colors"
+                      className="border border-black/20 px-4 py-2 text-xs tracking-widest uppercase disabled:opacity-30 hover:bg-black hover:text-white hover:border-black transition-colors active:scale-[0.97]"
                     >
                       Next
                     </button>

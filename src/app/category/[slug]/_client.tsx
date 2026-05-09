@@ -15,6 +15,19 @@ interface Product {
 }
 interface Meta { total: number; page: number; limit: number; pages: number }
 
+function ProductSkeleton() {
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
+      <div className="aspect-square bg-gray-200" />
+      <div className="p-3 space-y-2">
+        <div className="h-4 bg-gray-200 rounded w-4/5" />
+        <div className="h-3 bg-gray-200 rounded w-2/3" />
+        <div className="h-8 bg-gray-200 rounded mt-2" />
+      </div>
+    </div>
+  );
+}
+
 export default function CategoryPageClient() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -56,25 +69,31 @@ export default function CategoryPageClient() {
   if (notFound) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center">
+        <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Category Not Found</h1>
-        <Link href="/shop" className="text-indigo-600 hover:underline">Back to Shop</Link>
+        <p className="text-gray-500 mb-6">This category doesn&apos;t exist or has been removed.</p>
+        <Link href="/shop" className="inline-block bg-indigo-600 text-white font-bold px-8 py-3 rounded-full hover:bg-indigo-700 transition-colors">
+          Back to Shop
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-6 md:py-8">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-indigo-600">Home</Link>
+        <Link href="/" className="hover:text-indigo-600 transition-colors">Home</Link>
         <span>/</span>
-        <Link href="/shop" className="hover:text-indigo-600">Shop</Link>
+        <Link href="/shop" className="hover:text-indigo-600 transition-colors">Shop</Link>
         <span>/</span>
         <span className="text-gray-900 font-medium">{category?.name ?? slug}</span>
       </nav>
 
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-7">
         {loading ? (
           <div className="animate-pulse">
             <div className="h-7 bg-gray-200 rounded w-48 mb-2" />
@@ -82,9 +101,9 @@ export default function CategoryPageClient() {
           </div>
         ) : (
           <>
-            <h1 className="text-3xl font-bold text-gray-900">{category?.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{category?.name}</h1>
             {category?.description && (
-              <p className="text-gray-500 mt-2">{category.description}</p>
+              <p className="text-gray-500 mt-2 text-sm md:text-base">{category.description}</p>
             )}
             {meta && <p className="text-sm text-gray-400 mt-1">{meta.total} products</p>}
           </>
@@ -93,38 +112,32 @@ export default function CategoryPageClient() {
 
       {/* Products */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden animate-pulse">
-              <div className="aspect-square bg-gray-200" />
-              <div className="p-3 space-y-2">
-                <div className="h-4 bg-gray-200 rounded w-4/5" />
-                <div className="h-3 bg-gray-200 rounded w-2/3" />
-                <div className="h-8 bg-gray-200 rounded mt-2" />
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 8 }).map((_, i) => <ProductSkeleton key={i} />)}
         </div>
       ) : products.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
-          <svg className="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-          </svg>
-          <p className="font-medium">No products in this category yet</p>
-          <Link href="/shop" className="text-indigo-600 hover:underline text-sm mt-2 block">
+        <div className="text-center py-16 bg-gray-50 rounded-2xl border border-gray-100">
+          <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+            <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+          </div>
+          <h3 className="font-semibold text-gray-700 mb-1">No products yet</h3>
+          <p className="text-gray-400 text-sm mb-6">This category is empty for now</p>
+          <Link href="/shop" className="inline-block bg-indigo-600 text-white font-bold px-8 py-3 rounded-full hover:bg-indigo-700 transition-colors text-sm active:scale-[0.97]">
             Browse all products
           </Link>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
             {products.map((p) => <ProductCard key={p.id} product={p} />)}
           </div>
           {meta && page < meta.pages && (
             <div className="text-center mt-8">
               <button
                 onClick={() => setPage((p) => p + 1)}
-                className="bg-white border border-gray-200 text-gray-700 font-medium px-8 py-2.5 rounded-full hover:bg-gray-50 transition-colors"
+                className="bg-white border border-gray-200 text-gray-700 font-medium px-8 py-2.5 rounded-full hover:bg-gray-50 transition-colors active:scale-[0.97]"
               >
                 Load more
               </button>

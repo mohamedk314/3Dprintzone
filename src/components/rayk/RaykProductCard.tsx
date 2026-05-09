@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface Product {
   id: string;
@@ -14,6 +16,9 @@ interface Product {
 }
 
 export default function RaykProductCard({ product }: { product: Product }) {
+  const [adding, setAdding] = useState(false);
+  const [added, setAdded] = useState(false);
+
   const image = product.images?.[0];
   const outOfStock = product.productType === "physical" && product.stockQty === 0;
   const hasDiscount = product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price);
@@ -22,24 +27,34 @@ export default function RaykProductCard({ product }: { product: Product }) {
     : null;
 
   async function addToCart() {
-    await fetch("/api/storefront/cart", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ productId: product.id, qty: 1, brand: "rayk" }),
-    });
-    window.dispatchEvent(new Event("rayk-cart-updated"));
+    if (adding || added) return;
+    setAdding(true);
+    try {
+      await fetch("/api/storefront/cart", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productId: product.id, qty: 1, brand: "rayk" }),
+      });
+      window.dispatchEvent(new Event("rayk-cart-updated"));
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2000);
+    } finally {
+      setAdding(false);
+    }
   }
 
   return (
-    <div className="group bg-white border border-black/5 hover:border-black/20 transition-all">
+    <div className="group bg-white border border-black/5 hover:border-black/20 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200">
       <Link href={`/rayk/product/${product.slug}`} className="block">
         <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
           {image ? (
-            <img
+            <Image
               src={image.imageUrl}
               alt={image.altText ?? product.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-black/10">
@@ -62,7 +77,7 @@ export default function RaykProductCard({ product }: { product: Product }) {
       </Link>
       <div className="p-3 space-y-2">
         <Link href={`/rayk/product/${product.slug}`}>
-          <p className="text-sm font-medium text-black tracking-wide leading-tight hover:underline underline-offset-2">{product.name}</p>
+          <p className="text-sm font-medium text-black tracking-wide leading-tight hover:underline underline-offset-2 line-clamp-2">{product.name}</p>
         </Link>
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-black">{Number(product.price).toFixed(0)} EGP</span>
@@ -73,9 +88,14 @@ export default function RaykProductCard({ product }: { product: Product }) {
         {!outOfStock && (
           <button
             onClick={addToCart}
-            className="w-full border border-black text-black text-xs font-semibold tracking-widest uppercase py-2 hover:bg-black hover:text-white transition-colors"
+            disabled={adding}
+            className={`w-full border text-xs font-semibold tracking-widest uppercase py-2 transition-all duration-150 active:scale-[0.97] ${
+              added
+                ? "bg-black text-white border-black"
+                : "border-black text-black hover:bg-black hover:text-white"
+            }`}
           >
-            Add to Cart
+            {adding ? "Adding..." : added ? "Added!" : "Add to Cart"}
           </button>
         )}
       </div>
