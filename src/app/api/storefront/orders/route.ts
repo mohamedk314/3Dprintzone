@@ -4,7 +4,7 @@ import { getOrCreateSessionId } from "@/lib/utils/session";
 import { generateOrderRef } from "@/lib/utils/order-ref";
 import { PaymentMethod } from "@prisma/client";
 import { getShippingConfig } from "@/lib/services/shipping";
-import { sendOrderConfirmationEmail, sendNewOrderAdminEmail, sendLowStockAlertEmail, sendOutOfStockAlertEmail } from "@/lib/email/notifications";
+import { sendOrderConfirmationEmail, sendNewOrderAdminEmail } from "@/lib/email/notifications";
 import { getCustomerSession } from "@/lib/auth/customer-session";
 
 export const dynamic = "force-dynamic";
@@ -207,40 +207,10 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // decrement stock for physical products
-      for (const item of cart.items) {
-        if (item.product.productType === "physical") {
-          await tx.product.update({
-            where: { id: item.product.id },
-            data:  { stockQty: { decrement: item.qty } },
-          });
-        }
-      }
-
       await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
 
       return newOrder;
     });
-
-    // Fire stock alerts (non-blocking, after transaction)
-    const physicalCartItems = cart.items.filter((i) => i.product.productType === "physical");
-    if (physicalCartItems.length > 0) {
-      Promise.resolve().then(async () => {
-        const updatedProducts = await prisma.product.findMany({
-          where: { id: { in: physicalCartItems.map((i) => i.product.id) } },
-          select: { id: true, name: true, sku: true, brand: true, stockQty: true, lowStockThreshold: true, lowStockAlertSentAt: true, outOfStockAlertSentAt: true },
-        });
-        for (const p of updatedProducts) {
-          if (p.stockQty === 0 && !p.outOfStockAlertSentAt) {
-            await prisma.product.update({ where: { id: p.id }, data: { outOfStockAlertSentAt: new Date() } });
-            sendOutOfStockAlertEmail({ id: p.id, name: p.name, sku: p.sku, brand: p.brand }).catch(console.error);
-          } else if (p.stockQty > 0 && p.stockQty <= p.lowStockThreshold && !p.lowStockAlertSentAt) {
-            await prisma.product.update({ where: { id: p.id }, data: { lowStockAlertSentAt: new Date() } });
-            sendLowStockAlertEmail({ id: p.id, name: p.name, sku: p.sku, brand: p.brand, stockQty: p.stockQty, lowStockThreshold: p.lowStockThreshold }).catch(console.error);
-          }
-        }
-      }).catch(console.error);
-    }
 
     const fullOrderForEmail = await prisma.order.findUnique({
       where: { id: order.id },

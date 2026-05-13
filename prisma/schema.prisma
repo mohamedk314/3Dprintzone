@@ -107,6 +107,8 @@ model Category {
   name        String
   slug        String    @unique
   description String?   @db.Text
+  iconKey     String?   @default("cube")
+  imageUrl    String?
   isActive    Boolean   @default(true)
   sortOrder   Int       @default(0)
   brand       String    @default("3dprintzone")
@@ -282,6 +284,7 @@ model Order {
   estimatedDelivery DateTime?
   shippingMethodId  String?
   shippingZoneId    String?
+  stockDeductedAt   DateTime?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

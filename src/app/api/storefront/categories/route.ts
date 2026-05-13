@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
         name:        true,
         slug:        true,
         description: true,
+        iconKey:     true,
+        imageUrl:    true,
         sortOrder:   true,
         _count:      { select: { products: { where: { isActive: true, brand } } } },
       },

@@ -15,7 +15,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await req.json();
-    const { name, description, isActive, sortOrder, brand } = body;
+    const { name, description, iconKey, imageUrl, isActive, sortOrder, brand } = body;
 
     const existing = await prisma.category.findUnique({ where: { id } });
     if (!existing) {
@@ -49,9 +49,19 @@ export async function PATCH(
     }
 
     if (description !== undefined) updateData.description = description ?? null;
+    if (iconKey !== undefined) updateData.iconKey = iconKey ?? "cube";
     if (isActive !== undefined) updateData.isActive = Boolean(isActive);
     if (sortOrder !== undefined) updateData.sortOrder = Number(sortOrder);
     if (brand !== undefined) updateData.brand = brand;
+
+    // Image is only supported for RAYK categories. If the resolved brand is
+    // anything other than "rayk", we always clear the column.
+    const resolvedBrand = (brand ?? existing.brand) as string;
+    if (imageUrl !== undefined) {
+      updateData.imageUrl = resolvedBrand === "rayk" ? (imageUrl ?? null) : null;
+    } else if (brand !== undefined && resolvedBrand !== "rayk") {
+      updateData.imageUrl = null;
+    }
 
     const category = await prisma.category.update({
       where: { id },

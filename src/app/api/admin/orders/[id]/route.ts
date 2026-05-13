@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 import { OrderStatus, ShipmentStatus } from "@prisma/client";
 import { sendOrderStatusUpdateEmail, sendShipmentUpdateEmail } from "@/lib/email/notifications";
+import { validateStock, deductStock, returnStock, fireStockAlerts, resetStockAlertFlags } from "@/lib/services/stock";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,6 +30,7 @@ const orderDetailSelect = {
   estimatedDelivery: true,
   shippingMethodId:  true,
   shippingZoneId:    true,
+  stockDeductedAt:   true,
   createdAt:         true,
   updatedAt:         true,
   address: {
@@ -86,6 +88,7 @@ export async function GET(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
     const status  = message === "Unauthorized" ? 401 : 500;
+    if (status === 500) console.error("[GET /api/admin/orders/[id]]", error);
     return NextResponse.json({ success: false, message }, { status });
   }
 }
@@ -101,7 +104,10 @@ export async function PATCH(
     const body = await req.json();
     const { status, notes, shippingFee, shipmentStatus, trackingNumber, courierName, estimatedDelivery } = body;
 
-    const existing = await prisma.order.findUnique({ where: { id } });
+    const existing = await prisma.order.findUnique({
+      where: { id },
+      include: { items: { select: { productId: true, qty: true } } },
+    });
     if (!existing) {
       return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
     }
@@ -165,11 +171,59 @@ export async function PATCH(
       );
     }
 
-    const order = await prisma.order.update({
-      where: { id },
-      data: updateData,
-      select: orderDetailSelect,
-    });
+    const orderItems = existing.items;
+    let order;
+
+    if (updateData.status === "delivered" && !existing.stockDeductedAt) {
+      // Re-validate stock before entering the transaction
+      const check = await validateStock(orderItems);
+      if (!check.ok) {
+        return NextResponse.json(
+          { success: false, message: `Cannot mark as delivered: ${check.error}` },
+          { status: 422 }
+        );
+      }
+
+      // Keep transaction minimal: only the writes that must be atomic
+      await prisma.$transaction(async (tx) => {
+        await deductStock(orderItems, tx);
+        await tx.order.update({
+          where: { id },
+          data: { ...updateData, stockDeductedAt: new Date() },
+        });
+      });
+
+      // Fire alerts after transaction commits
+      fireStockAlerts(orderItems.map((i) => i.productId));
+
+      // Fetch updated order outside the transaction (avoids complex nested selects inside tx)
+      order = await prisma.order.findUnique({ where: { id }, select: orderDetailSelect });
+
+    } else if (updateData.status === "canceled" && existing.stockDeductedAt) {
+      // Return stock only if it was previously deducted
+      await prisma.$transaction(async (tx) => {
+        await returnStock(orderItems, tx);
+        await tx.order.update({
+          where: { id },
+          data: { ...updateData, stockDeductedAt: null },
+        });
+      });
+
+      resetStockAlertFlags(orderItems.map((i) => i.productId));
+
+      order = await prisma.order.findUnique({ where: { id }, select: orderDetailSelect });
+
+    } else {
+      order = await prisma.order.update({
+        where: { id },
+        data: updateData,
+        select: orderDetailSelect,
+      });
+    }
+
+    if (!order) {
+      return NextResponse.json({ success: false, message: "Order not found after update" }, { status: 404 });
+    }
 
     if (updateData.status) {
       sendOrderStatusUpdateEmail({
@@ -184,13 +238,13 @@ export async function PATCH(
 
     if (updateData.shipmentStatus && ["shipped", "out_for_delivery", "delivered"].includes(updateData.shipmentStatus as string)) {
       sendShipmentUpdateEmail({
-        orderRef:      order.orderRef,
-        customerName:  order.customerName,
-        email:         order.email,
-        shipmentStatus: order.shipmentStatus as string,
-        trackingNumber: order.trackingNumber ?? undefined,
+        orderRef:          order.orderRef,
+        customerName:      order.customerName,
+        email:             order.email,
+        shipmentStatus:    order.shipmentStatus as string,
+        trackingNumber:    order.trackingNumber ?? undefined,
         estimatedDelivery: order.estimatedDelivery ?? undefined,
-        brand:         order.brand,
+        brand:             order.brand,
       }).catch((e) => console.error("[email]", e));
     }
 
@@ -198,6 +252,7 @@ export async function PATCH(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
     const status  = message === "Unauthorized" ? 401 : 500;
+    if (status === 500) console.error("[PATCH /api/admin/orders/[id]]", error);
     return NextResponse.json({ success: false, message }, { status });
   }
 }

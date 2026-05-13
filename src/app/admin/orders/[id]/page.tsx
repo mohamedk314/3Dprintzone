@@ -12,7 +12,7 @@ interface Order {
   status: string; paymentMethod: string; subtotal: number; shippingFee: number; total: number;
   notes: string | null; createdAt: string; updatedAt: string; brand: string;
   shipmentStatus: string | null; trackingNumber: string | null; courierName: string | null;
-  estimatedDelivery: string | null;
+  estimatedDelivery: string | null; stockDeductedAt: string | null;
   shippingMethod: { id: string; name: string; estimatedDays: number } | null;
   shippingZone: { id: string; name: string; estimatedDaysMin: number; estimatedDaysMax: number } | null;
   address: Address | null; items: OrderItem[];
@@ -60,6 +60,7 @@ export default function AdminOrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const [newStatus, setNewStatus] = useState("");
   const [newNotes, setNewNotes] = useState("");
@@ -80,19 +81,29 @@ export default function AdminOrderDetailPage() {
 
   useEffect(() => {
     fetch(`/api/admin/orders/${id}`)
-      .then((r) => { if (r.status === 404) { setNotFound(true); return null; } return r.json(); })
+      .then(async (r) => {
+        if (r.status === 404) { setNotFound(true); return null; }
+        const d = await r.json();
+        if (!r.ok) {
+          setFetchError(d?.message || `Server error (${r.status})`);
+          return null;
+        }
+        return d;
+      })
       .then((d) => {
         if (!d) return;
         const o = d?.data;
+        if (!o) { setFetchError("Order data missing in response"); return; }
         setOrder(o);
-        setNewStatus(o?.status ?? "");
-        setNewNotes(o?.notes ?? "");
-        setNewShippingFee(String(o?.shippingFee ?? "0"));
-        setNewShipmentStatus(o?.shipmentStatus ?? "");
-        setNewTrackingNumber(o?.trackingNumber ?? "");
-        setNewCourierName(o?.courierName ?? "");
-        setNewEstimatedDelivery(o?.estimatedDelivery ? new Date(o.estimatedDelivery).toISOString().split("T")[0] : "");
+        setNewStatus(o.status ?? "");
+        setNewNotes(o.notes ?? "");
+        setNewShippingFee(String(o.shippingFee ?? "0"));
+        setNewShipmentStatus(o.shipmentStatus ?? "");
+        setNewTrackingNumber(o.trackingNumber ?? "");
+        setNewCourierName(o.courierName ?? "");
+        setNewEstimatedDelivery(o.estimatedDelivery ? new Date(o.estimatedDelivery).toISOString().split("T")[0] : "");
       })
+      .catch((e) => setFetchError(e.message || "Network error"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -152,7 +163,26 @@ export default function AdminOrderDetailPage() {
     );
   }
 
-  if (notFound || !order) {
+  if (notFound) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-gray-500">Order not found.</p>
+        <Link href="/admin/orders" className="text-indigo-600 hover:underline text-sm mt-2 block">← Back to Orders</Link>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="p-6 text-center">
+        <p className="text-sm font-semibold text-red-600 mb-1">Failed to load order</p>
+        <p className="text-sm text-gray-500 font-mono">{fetchError}</p>
+        <Link href="/admin/orders" className="text-indigo-600 hover:underline text-sm mt-3 block">← Back to Orders</Link>
+      </div>
+    );
+  }
+
+  if (!order) {
     return (
       <div className="p-6 text-center">
         <p className="text-gray-500">Order not found.</p>
@@ -272,6 +302,48 @@ export default function AdminOrderDetailPage() {
             </div>
           )}
         </dl>
+      </div>
+
+      {/* Stock Status */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h2 className="font-semibold text-gray-900 text-sm mb-3">Stock</h2>
+        <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <dt className="text-gray-500">Stock deducted</dt>
+            <dd>
+              {order.stockDeductedAt ? (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Yes
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  No
+                </span>
+              )}
+            </dd>
+          </div>
+          {order.stockDeductedAt && (
+            <div>
+              <dt className="text-xs text-gray-500">Deducted at</dt>
+              <dd className="font-medium text-gray-900 text-xs mt-0.5">
+                {new Date(order.stockDeductedAt).toLocaleString("en-EG")}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {!order.stockDeductedAt && order.status !== "canceled" && (
+          <p className="mt-2 text-xs text-amber-600">
+            {order.paymentMethod === "cod"
+              ? "Stock will be deducted when this order is marked as Delivered."
+              : "Stock will be deducted when payment is confirmed."}
+          </p>
+        )}
       </div>
 
       {/* Order Items */}

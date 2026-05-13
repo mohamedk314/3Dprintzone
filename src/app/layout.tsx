@@ -40,8 +40,8 @@ const orgJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} antialiased bg-gray-50`}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} antialiased bg-gray-50`} suppressHydrationWarning>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}

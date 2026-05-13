@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
         name: true,
         slug: true,
         description: true,
+        iconKey: true,
+        imageUrl: true,
         isActive: true,
         sortOrder: true,
         brand: true,
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
     await requireAuthenticatedAdmin();
 
     const body = await req.json();
-    const { name, description, isActive = true, sortOrder = 0, brand = "3dprintzone" } = body;
+    const { name, description, iconKey, imageUrl, isActive = true, sortOrder = 0, brand = "3dprintzone" } = body;
 
     if (!name || typeof name !== "string" || name.trim() === "") {
       return NextResponse.json(
@@ -65,6 +67,8 @@ export async function POST(req: NextRequest) {
         name: name.trim(),
         slug,
         description: description ?? null,
+        iconKey: iconKey ?? "cube",
+        imageUrl: brand === "rayk" ? (imageUrl ?? null) : null,
         isActive: Boolean(isActive),
         sortOrder: Number(sortOrder),
         brand,

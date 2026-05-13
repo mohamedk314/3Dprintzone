@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 function LoginInner() {
   const router       = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo   = searchParams.get("redirect") ?? "/account/orders";
+  const redirectTo   = searchParams.get("redirect") ?? "/account";
 
   const [step,    setStep]    = useState<"email" | "otp">("email");
   const [email,   setEmail]   = useState("");
