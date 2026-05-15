@@ -56,14 +56,14 @@ interface FloatingCardProps {
 function FloatingCard({ img, label, sub, className = "" }: FloatingCardProps) {
   return (
     <div
-      className={`flex flex-col bg-white/20 backdrop-blur-2xl border border-white/35 rounded-2xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.42)] hover:-translate-y-0.5 transition-transform duration-200 ${className}`}
+      className={`flex flex-col bg-white/20 backdrop-blur-2xl border border-white/35 rounded-2xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.42)] hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)] transition-[transform,box-shadow] duration-300 ${className}`}
     >
       {/* Image — no padding so product fills the full image area */}
       <div className="relative flex-1 min-h-0 bg-black/10">
         <Image src={img} alt={label} fill className="object-contain" sizes="175px" />
       </div>
       {/* Text footer */}
-      <div className="flex-shrink-0 px-2.5 py-1 bg-black/28 backdrop-blur-sm">
+      <div className="flex-shrink-0 px-2.5 py-1.5 bg-black/30 backdrop-blur-sm">
         <div className="text-white text-[11px] font-bold leading-tight">{label}</div>
         <div className="text-white/70 text-[9px] leading-tight mt-0.5">{sub}</div>
       </div>
@@ -151,16 +151,16 @@ export default function HomePageClient() {
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link
                   href="/shop"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-indigo-700 font-bold px-6 py-3 rounded-full hover:bg-indigo-50 transition-all duration-200 active:scale-[0.97] shadow-xl text-sm"
+                  className="press group inline-flex items-center justify-center gap-2 bg-white text-indigo-700 font-bold px-6 py-3 rounded-full hover:bg-indigo-50 transition-[background-color,transform] duration-200 shadow-xl text-sm"
                 >
                   Shop Now
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </Link>
                 <Link
                   href="/custom-request"
-                  className="inline-flex items-center justify-center gap-2 border-2 border-white/70 text-white font-bold px-6 py-3 rounded-full hover:bg-white/10 hover:border-white transition-all duration-200 active:scale-[0.97] text-sm backdrop-blur-sm"
+                  className="press inline-flex items-center justify-center gap-2 border-2 border-white/70 text-white font-bold px-6 py-3 rounded-full hover:bg-white/10 hover:border-white transition-[background-color,border-color,transform] duration-200 text-sm backdrop-blur-sm"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -310,21 +310,21 @@ export default function HomePageClient() {
       </div>
 
       {/* ── Main content ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-16 space-y-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 sm:pt-12 pb-12 sm:pb-16 space-y-12 sm:space-y-16">
 
         {/* Categories */}
         <section>
-          <div className="flex items-center justify-between mb-7">
+          <div className="flex items-end justify-between gap-4 mb-6 sm:mb-7">
             <div>
               <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Shop by Category</h2>
               <p className="text-gray-500 text-sm mt-1">Find exactly what you need</p>
             </div>
             <Link
               href="/shop"
-              className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-semibold transition-colors group"
+              className="group inline-flex items-center gap-1.5 -mr-1 sm:mr-0 px-2 py-1.5 rounded-lg text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-semibold transition-colors"
             >
               View all
-              <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
@@ -342,19 +342,19 @@ export default function HomePageClient() {
                 <Link
                   key={cat.id}
                   href={`/category/${cat.slug}`}
-                  className="group bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 text-center hover:border-indigo-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-200"
+                  className="lift group bg-white border border-gray-100 rounded-2xl p-4 sm:p-5 text-center hover:border-indigo-200"
                 >
-                  <div className="w-13 h-13 w-12 h-12 sm:w-14 sm:h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:bg-indigo-100 transition-colors duration-200">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-3 group-hover:bg-indigo-100 transition-colors duration-200">
                     <CategoryIcon
                       iconKey={cat.iconKey}
-                      className="w-6 h-6 text-indigo-600 group-hover:scale-110 transition-transform duration-200"
+                      className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-600 transition-transform duration-200 group-hover:scale-110"
                     />
                   </div>
                   <div className="text-sm font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors leading-tight">
                     {cat.name}
                   </div>
                   {cat._count && (
-                    <div className="text-xs text-gray-400 mt-1">{cat._count.products} products</div>
+                    <div className="text-xs text-gray-400 mt-1 tabular-nums">{cat._count.products} products</div>
                   )}
                 </Link>
               ))
@@ -365,17 +365,17 @@ export default function HomePageClient() {
         {/* Featured Products */}
         {(loading || featured.length > 0) && (
           <section>
-            <div className="flex items-center justify-between mb-7">
+            <div className="flex items-end justify-between gap-4 mb-6 sm:mb-7">
               <div>
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Featured Products</h2>
                 <p className="text-gray-500 text-sm mt-1">Handpicked for you</p>
               </div>
               <Link
                 href="/shop?featured=true"
-                className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-700 font-semibold transition-colors group"
+                className="group inline-flex items-center gap-1.5 -mr-1 sm:mr-0 px-2 py-1.5 rounded-lg text-sm text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-semibold transition-colors"
               >
                 View all
-                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
@@ -412,7 +412,7 @@ export default function HomePageClient() {
             </p>
             <Link
               href="/custom-request"
-              className="inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3.5 rounded-full hover:bg-orange-50 transition-all duration-200 active:scale-[0.97] shadow-xl text-sm sm:text-base"
+              className="press inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3.5 rounded-full hover:bg-orange-50 transition-[background-color,transform] duration-200 shadow-xl text-sm sm:text-base"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />

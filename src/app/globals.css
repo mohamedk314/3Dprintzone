@@ -8,6 +8,17 @@
   --accent: #f97316;
   --border: #e5e7eb;
   --muted: #6b7280;
+
+  /* Motion tokens — Emil Kowalski-style: snappy ease-outs, never linear */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Elevation tokens — soft, layered shadows that don't muddy product imagery */
+  --shadow-soft: 0 1px 2px rgba(17, 24, 39, 0.04), 0 1px 1px rgba(17, 24, 39, 0.03);
+  --shadow-card: 0 1px 2px rgba(17, 24, 39, 0.05), 0 6px 16px -8px rgba(17, 24, 39, 0.08);
+  --shadow-card-hover: 0 2px 4px rgba(17, 24, 39, 0.06), 0 18px 36px -16px rgba(79, 70, 229, 0.18);
 }
 
 @theme inline {
@@ -23,12 +34,140 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Stop hyperlinks from inheriting the underline on tap on iOS */
+a, button { -webkit-tap-highlight-color: transparent; }
+
+/* Smoother default easing on Tailwind transition utilities.
+   Tailwind defaults to cubic-bezier(.4,0,.2,1); we prefer ease-out for UI. */
+.transition,
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-transform,
+.transition-shadow {
+  transition-timing-function: var(--ease-out-quart);
+}
+
+/* Keyboard focus — visible without being intrusive */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* Count-badge entry pop (cart / wishlist) */
+@keyframes badge-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.18); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.badge-pop {
+  animation: badge-pop 320ms var(--ease-out-back) both;
+  transform-origin: center;
+}
+
+/* Soft fade-in for popovers / mobile sheets */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fade-slide-down {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-fade-in       { animation: fade-in 180ms var(--ease-out-quart) both; }
+.anim-fade-slide-in { animation: fade-slide-down 220ms var(--ease-out-expo) both; }
+
+/* Subtle skeleton shimmer (nicer than bare pulse) */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(243, 244, 246, 1) 0%,
+    rgba(229, 231, 235, 1) 50%,
+    rgba(243, 244, 246, 1) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Honor user motion preferences — disables transitions/animations */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Line clamp utilities */
 .line-clamp-1 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
 .line-clamp-2 { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Hide scrollbar for horizontal nav (used by CategoryNav, filter chips, etc.) */
+.scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
+/*
+ * Press feedback — universal "the button heard me" affordance.
+ * Combine with hover styles on the parent. Subtle (0.97) is intentional.
+ */
+.press {
+  transition: transform 160ms var(--ease-out-quart);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/*
+ * Lift card on hover, only on hover-capable devices.
+ * Touch devices skip this to avoid the "stuck hover" state.
+ */
+.lift {
+  transition:
+    transform 220ms var(--ease-out-quart),
+    box-shadow 220ms var(--ease-out-quart),
+    border-color 220ms var(--ease-out-quart);
+  will-change: transform;
+}
+@media (hover: hover) and (pointer: fine) {
+  .lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-hover);
+  }
+}
+
+/* Sticky-bottom CTA area helper for mobile pages — leaves room for the system home indicator */
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0); }
+
+/* Mobile menu item stagger — used by Header mobile sheet */
+@keyframes menu-item-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.menu-item-in {
+  animation: menu-item-in 240ms var(--ease-out-expo) both;
+}
+
+/* Hover scale only on hover-capable pointers — avoids "stuck hover" on touch */
+@media (hover: hover) and (pointer: fine) {
+  .hover-scale-110:hover { transform: scale(1.10); }
+  .hover-scale-105:hover { transform: scale(1.05); }
+}

@@ -116,7 +116,7 @@ export default function CartPage() {
         <p className="text-gray-500 mb-7">Looks like you haven&apos;t added anything yet</p>
         <Link
           href="/shop"
-          className="inline-block bg-indigo-600 text-white font-bold px-8 py-3.5 rounded-full hover:bg-indigo-700 transition-colors active:scale-[0.97]"
+          className="press inline-block bg-indigo-600 text-white font-bold px-8 py-3.5 rounded-full hover:bg-indigo-700 transition-[background-color,transform]"
         >
           Continue Shopping
         </Link>
@@ -135,7 +135,7 @@ export default function CartPage() {
             const img = item.product.images?.[0];
             const maxQty = item.product.productType === "physical" ? item.product.stockQty : 99;
             return (
-              <div key={item.id} className="bg-white rounded-xl border border-gray-100 p-4 flex gap-3 sm:gap-4 hover:shadow-sm transition-shadow">
+              <div key={item.id} className="bg-white rounded-2xl border border-gray-100 p-3.5 sm:p-4 flex gap-3 sm:gap-4 hover:shadow-sm hover:border-gray-200 transition-[box-shadow,border-color] duration-200">
                 <Link href={`/product/${item.product.slug}`} className="shrink-0">
                   <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
                     {img?.imageUrl ? (
@@ -161,27 +161,31 @@ export default function CartPage() {
                   </Link>
                   <p className="text-sm text-gray-500 mt-0.5">{Number(item.unitPrice).toFixed(0)} EGP each</p>
                   <div className="flex items-center justify-between mt-3">
-                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                       <button
                         onClick={() => updateQty(item.product.id, item.qty - 1)}
                         disabled={!!updating}
-                        className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        className="press w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        aria-label={item.qty === 1 ? "Remove from cart" : "Decrease quantity"}
                       >
                         {item.qty === 1 ? (
                           <svg className="w-3.5 h-3.5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
-                        ) : "−"}
+                        ) : (
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 12h14" /></svg>
+                        )}
                       </button>
-                      <span className="w-8 text-center text-sm font-medium">
-                        {updating === item.product.id ? "..." : item.qty}
+                      <span className="w-8 text-center text-sm font-medium tabular-nums">
+                        {updating === item.product.id ? "…" : item.qty}
                       </span>
                       <button
                         onClick={() => updateQty(item.product.id, item.qty + 1)}
                         disabled={!!updating || item.qty >= maxQty}
-                        className="w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        className="press w-9 h-9 flex items-center justify-center text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+                        aria-label="Increase quantity"
                       >
-                        +
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 5v14M5 12h14" /></svg>
                       </button>
                     </div>
                     <p className="font-bold text-gray-900 text-sm sm:text-base">{(Number(item.unitPrice) * item.qty).toFixed(0)} EGP</p>
@@ -228,7 +232,7 @@ export default function CartPage() {
             </div>
             <button
               onClick={() => router.push("/checkout")}
-              className="w-full mt-5 bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-colors active:scale-[0.98]"
+              className="press w-full mt-5 bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-[background-color,transform]"
             >
               Proceed to Checkout
             </button>

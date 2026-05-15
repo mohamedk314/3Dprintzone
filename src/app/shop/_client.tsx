@@ -163,7 +163,7 @@ function ShopPage() {
             </div>
             <button
               onClick={() => router.push(buildUrl({ minPrice: minPriceInput, maxPrice: maxPriceInput, page: "1" }))}
-              className="w-full bg-indigo-600 text-white text-xs font-semibold py-1.5 rounded-lg hover:bg-indigo-700 transition-colors active:scale-[0.97]"
+              className="press w-full bg-indigo-600 text-white text-xs font-semibold py-2 rounded-lg hover:bg-indigo-700 transition-[background-color,transform]"
             >
               Apply
             </button>
@@ -192,11 +192,13 @@ function ShopPage() {
         {/* Products grid */}
         <div className="flex-1 min-w-0">
           {/* Mobile category chips */}
-          <div className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide">
+          <div className="md:hidden flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide -mx-1 px-1">
             <button
               onClick={() => setParam("category", "")}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                !category ? "bg-indigo-600 text-white border-indigo-600" : "border-gray-200 text-gray-600 bg-white"
+              className={`press shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-[background-color,color,border-color,transform] ${
+                !category
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "border-gray-200 text-gray-600 bg-white hover:border-gray-300"
               }`}
             >
               All
@@ -205,8 +207,10 @@ function ShopPage() {
               <button
                 key={cat.id}
                 onClick={() => setParam("category", cat.slug)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  category === cat.slug ? "bg-indigo-600 text-white border-indigo-600" : "border-gray-200 text-gray-600 bg-white"
+                className={`press shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-[background-color,color,border-color,transform] ${
+                  category === cat.slug
+                    ? "bg-indigo-600 text-white border-indigo-600"
+                    : "border-gray-200 text-gray-600 bg-white hover:border-gray-300"
                 }`}
               >
                 {cat.name}
@@ -229,13 +233,13 @@ function ShopPage() {
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
                   <button
                     onClick={() => router.push("/shop")}
-                    className="inline-block bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-full hover:bg-indigo-700 transition-colors text-sm active:scale-[0.97]"
+                    className="press inline-block bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-full hover:bg-indigo-700 transition-[background-color,transform] text-sm"
                   >
                     Clear all filters
                   </button>
                   <Link
                     href="/shop"
-                    className="inline-block border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-full hover:bg-gray-50 transition-colors text-sm"
+                    className="press inline-block border border-gray-200 text-gray-600 font-semibold px-6 py-2.5 rounded-full hover:bg-gray-50 hover:border-gray-300 transition-[background-color,border-color,transform] text-sm"
                   >
                     Browse all products
                   </Link>
@@ -253,17 +257,17 @@ function ShopPage() {
                   <button
                     onClick={() => setParam("page", String(page - 1))}
                     disabled={page <= 1}
-                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors active:scale-[0.97]"
+                    className="press px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-gray-300 transition-[background-color,border-color,transform]"
                   >
                     ← Prev
                   </button>
-                  <span className="text-sm text-gray-600 px-2">
+                  <span className="text-sm text-gray-600 px-2 tabular-nums">
                     Page {page} of {meta.pages}
                   </span>
                   <button
                     onClick={() => setParam("page", String(page + 1))}
                     disabled={page >= meta.pages}
-                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 hover:bg-gray-50 transition-colors active:scale-[0.97]"
+                    className="press px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 hover:border-gray-300 transition-[background-color,border-color,transform]"
                   >
                     Next →
                   </button>

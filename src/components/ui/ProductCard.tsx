@@ -87,16 +87,20 @@ export default function ProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group">
+    <div className="lift bg-white rounded-2xl border border-gray-100 overflow-hidden group focus-within:border-indigo-200">
       {/* Image */}
-      <Link href={`/product/${product.slug}`} className="block relative aspect-square bg-gray-50 overflow-hidden">
+      <Link
+        href={`/product/${product.slug}`}
+        className="block relative aspect-square bg-gray-50 overflow-hidden"
+        aria-label={product.name}
+      >
         {image?.imageUrl ? (
           <Image
             src={image.imageUrl}
             alt={image.altText || product.name}
             fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
+            className="object-cover transition-transform duration-[600ms] will-change-transform group-hover:scale-[1.05]"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -105,44 +109,61 @@ export default function ProductCard({ product }: { product: Product }) {
             </svg>
           </div>
         )}
+        {/* Gradient veil — lifts text contrast at the bottom of the image without dimming the product */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+        {/* Out-of-stock veil — communicates the state without hiding the image entirely */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-white/55 backdrop-blur-[1px] flex items-center justify-center">
+            <span className="bg-white/90 text-gray-700 text-[11px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm">
+              Sold out
+            </span>
+          </div>
+        )}
+
         {/* Badges */}
         <div className="absolute top-2 left-2 flex flex-col gap-1">
           {discount > 0 && (
-            <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+            <span className="bg-red-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm tabular-nums">
               -{discount}%
             </span>
           )}
           {product.isFeatured && (
-            <span className="bg-indigo-600 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+            <span className="bg-indigo-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow-sm">
               Featured
             </span>
           )}
         </div>
-        {/* Wishlist button */}
+        {/* Wishlist button — hover scaling only on hover-capable devices */}
         <button
           onClick={toggleWishlist}
           disabled={togglingWishlist}
-          className={`absolute top-2 right-2 w-8 h-8 rounded-full flex items-center justify-center shadow-sm transition-all duration-150 hover:scale-110 active:scale-95 ${
+          aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
+          aria-pressed={wishlisted}
+          className={`hover-scale-110 absolute top-2 right-2 w-9 h-9 rounded-full flex items-center justify-center shadow-sm transition-[transform,background-color,color] duration-150 active:scale-90 ${
             wishlisted
               ? "bg-red-500 text-white"
-              : "bg-white text-gray-400 hover:text-red-500 hover:bg-red-50"
+              : "bg-white/95 backdrop-blur-sm text-gray-500 hover:text-red-500 hover:bg-red-50"
           }`}
         >
-          <svg className="w-4 h-4" fill={wishlisted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-[18px] h-[18px]" fill={wishlisted ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
         </button>
       </Link>
 
       {/* Info */}
-      <div className="p-3">
+      <div className="p-3 sm:p-3.5">
         {product.category && (
-          <Link href={`/category/${product.category.slug}`} className="text-xs text-indigo-500 hover:text-indigo-700 font-medium mb-1 block transition-colors">
+          <Link
+            href={`/category/${product.category.slug}`}
+            className="text-[11px] uppercase tracking-wider text-indigo-500 hover:text-indigo-700 font-semibold mb-1 inline-block transition-colors"
+          >
             {product.category.name}
           </Link>
         )}
         <Link href={`/product/${product.slug}`} className="block">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2 hover:text-indigo-600 transition-colors">
+          <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors">
             {product.name}
           </h3>
         </Link>
@@ -151,18 +172,22 @@ export default function ProductCard({ product }: { product: Product }) {
         )}
 
         {/* Price + stock */}
-        <div className="mt-2 flex items-center justify-between gap-1">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="font-bold text-gray-900 text-sm">{Number(product.price).toFixed(0)} EGP</span>
+        <div className="mt-2.5 flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1.5 min-w-0">
+            <span className="font-bold text-gray-900 text-sm tabular-nums">{Number(product.price).toFixed(0)} EGP</span>
             {product.compareAtPrice && (
-              <span className="text-xs text-gray-400 line-through truncate">{Number(product.compareAtPrice).toFixed(0)} EGP</span>
+              <span className="text-xs text-gray-400 line-through tabular-nums truncate">{Number(product.compareAtPrice).toFixed(0)}</span>
             )}
           </div>
           {product.productType === "physical" && (
-            <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-              isOutOfStock ? "bg-red-50 text-red-500" : product.stockQty <= 5 ? "bg-amber-50 text-amber-600" : "bg-green-50 text-green-600"
+            <span className={`shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+              isOutOfStock
+                ? "bg-red-50 text-red-500"
+                : product.stockQty <= 5
+                ? "bg-amber-50 text-amber-600"
+                : "bg-emerald-50 text-emerald-600"
             }`}>
-              {isOutOfStock ? "Out of stock" : product.stockQty <= 5 ? `${product.stockQty} left` : "In stock"}
+              {isOutOfStock ? "Out" : product.stockQty <= 5 ? `${product.stockQty} left` : "In stock"}
             </span>
           )}
         </div>
@@ -171,15 +196,15 @@ export default function ProductCard({ product }: { product: Product }) {
         <button
           onClick={addToCart}
           disabled={isOutOfStock || addingToCart}
-          className={`mt-2.5 w-full py-2 rounded-lg text-sm font-semibold transition-all duration-150 active:scale-[0.97] ${
+          className={`press mt-3 w-full py-2.5 rounded-xl text-sm font-semibold transition-[background-color,color,transform] duration-150 ${
             isOutOfStock
               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
               : cartMsg === "Added!"
-              ? "bg-green-500 text-white"
+              ? "bg-emerald-500 text-white"
               : "bg-indigo-600 text-white hover:bg-indigo-700"
           }`}
         >
-          {addingToCart ? "Adding..." : cartMsg || (isOutOfStock ? "Out of Stock" : "Add to Cart")}
+          {addingToCart ? "Adding…" : cartMsg || (isOutOfStock ? "Out of stock" : "Add to cart")}
         </button>
       </div>
     </div>

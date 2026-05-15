@@ -45,8 +45,8 @@ export default function RaykProductCard({ product }: { product: Product }) {
   }
 
   return (
-    <div className="group bg-white border border-black/5 hover:border-black/20 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200">
-      <Link href={`/rayk/product/${product.slug}`} className="block">
+    <div className="group bg-white border border-black/5 transition-[transform,box-shadow,border-color] duration-200 will-change-transform hover:border-black/25 hover:-translate-y-[2px] hover:shadow-[0_18px_36px_-22px_rgba(0,0,0,0.35)]">
+      <Link href={`/rayk/product/${product.slug}`} className="block" aria-label={product.name}>
         <div className="relative aspect-[3/4] bg-gray-50 overflow-hidden">
           {image ? (
             <Image
@@ -54,7 +54,7 @@ export default function RaykProductCard({ product }: { product: Product }) {
               alt={image.altText ?? product.name}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              className="object-cover transition-transform duration-[700ms] will-change-transform group-hover:scale-[1.05]"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-black/10">
@@ -64,38 +64,40 @@ export default function RaykProductCard({ product }: { product: Product }) {
             </div>
           )}
           {discountPct && (
-            <span className="absolute top-2 left-2 bg-black text-white text-[10px] font-bold px-2 py-0.5 tracking-widest uppercase">
+            <span className="absolute top-2.5 left-2.5 bg-black text-white text-[10px] font-bold px-2 py-0.5 tracking-[0.18em] uppercase">
               -{discountPct}%
             </span>
           )}
           {outOfStock && (
-            <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-              <span className="text-xs font-semibold tracking-widest uppercase text-black/40">Sold Out</span>
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] flex items-center justify-center">
+              <span className="text-xs font-semibold tracking-[0.2em] uppercase text-black/50">Sold Out</span>
             </div>
           )}
         </div>
       </Link>
-      <div className="p-3 space-y-2">
+      <div className="p-3 sm:p-3.5 space-y-2.5">
         <Link href={`/rayk/product/${product.slug}`}>
-          <p className="text-sm font-medium text-black tracking-wide leading-tight hover:underline underline-offset-2 line-clamp-2">{product.name}</p>
+          <p className="text-sm font-medium text-black tracking-wide leading-snug line-clamp-2 hover:underline underline-offset-[3px] decoration-1">
+            {product.name}
+          </p>
         </Link>
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-black">{Number(product.price).toFixed(0)} EGP</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-sm font-bold text-black tabular-nums">{Number(product.price).toFixed(0)} EGP</span>
           {hasDiscount && (
-            <span className="text-xs text-black/30 line-through">{Number(product.compareAtPrice).toFixed(0)}</span>
+            <span className="text-xs text-black/30 line-through tabular-nums">{Number(product.compareAtPrice).toFixed(0)}</span>
           )}
         </div>
         {!outOfStock && (
           <button
             onClick={addToCart}
             disabled={adding}
-            className={`w-full border text-xs font-semibold tracking-widest uppercase py-2 transition-all duration-150 active:scale-[0.97] ${
+            className={`press w-full border text-[11px] font-semibold tracking-[0.18em] uppercase py-2.5 transition-[background-color,color,border-color] duration-200 ${
               added
                 ? "bg-black text-white border-black"
                 : "border-black text-black hover:bg-black hover:text-white"
             }`}
           >
-            {adding ? "Adding..." : added ? "Added!" : "Add to Cart"}
+            {adding ? "Adding…" : added ? "Added" : "Add to Cart"}
           </button>
         )}
       </div>

@@ -24,17 +24,22 @@ export default function CategoryNav() {
     return activeCategory === slug;
   };
 
+  // Stable 2px bottom border on every tab — color animates from transparent → indigo.
+  // This eliminates the layout shift the previous hover-only border caused.
+  const tabBase =
+    "shrink-0 px-3.5 sm:px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 border-transparent transition-[color,border-color] duration-200";
+
   return (
     <nav className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide py-0.5">
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
           {/* All products link */}
           <Link
             href="/shop"
-            className={`shrink-0 px-4 py-2.5 text-sm font-medium rounded transition-colors whitespace-nowrap ${
+            className={`${tabBase} ${
               pathname === "/shop" && !activeCategory
-                ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-600 hover:text-indigo-600 hover:border-b-2 hover:border-indigo-200"
+                ? "text-indigo-600 border-indigo-600"
+                : "text-gray-600 hover:text-indigo-600 hover:border-indigo-200"
             }`}
           >
             All Products
@@ -42,8 +47,10 @@ export default function CategoryNav() {
           {/* RAYK brand link */}
           <Link
             href="/rayk"
-            className={`shrink-0 px-4 py-2.5 text-sm font-black tracking-widest uppercase whitespace-nowrap transition-colors ${
-              pathname.startsWith("/rayk") ? "text-black border-b-2 border-black" : "text-gray-500 hover:text-black"
+            className={`${tabBase} font-black tracking-[0.18em] uppercase ${
+              pathname.startsWith("/rayk")
+                ? "text-black border-black"
+                : "text-gray-500 hover:text-black hover:border-gray-300"
             }`}
           >
             RAYK
@@ -51,35 +58,35 @@ export default function CategoryNav() {
           {/* Static links */}
           <Link
             href="/custom-request"
-            className={`shrink-0 px-4 py-2.5 text-sm font-medium rounded transition-colors whitespace-nowrap ${
+            className={`${tabBase} ${
               pathname === "/custom-request"
-                ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-600 hover:text-indigo-600"
+                ? "text-indigo-600 border-indigo-600"
+                : "text-gray-600 hover:text-indigo-600 hover:border-indigo-200"
             }`}
           >
             Custom Request
           </Link>
           <Link
             href="/track-order"
-            className={`shrink-0 px-4 py-2.5 text-sm font-medium rounded transition-colors whitespace-nowrap ${
+            className={`${tabBase} ${
               pathname === "/track-order"
-                ? "text-indigo-600 border-b-2 border-indigo-600"
-                : "text-gray-600 hover:text-indigo-600"
+                ? "text-indigo-600 border-indigo-600"
+                : "text-gray-600 hover:text-indigo-600 hover:border-indigo-200"
             }`}
           >
             Track Order
           </Link>
           {/* Separator */}
-          {categories.length > 0 && <div className="w-px h-5 bg-gray-200 mx-1 shrink-0" />}
+          {categories.length > 0 && <div className="w-px h-5 bg-gray-200 mx-1 shrink-0 self-center" />}
           {/* Dynamic categories */}
           {categories.map((cat) => (
             <Link
               key={cat.id}
               href={`/category/${cat.slug}`}
-              className={`shrink-0 px-4 py-2.5 text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`${tabBase} ${
                 isActive(cat.slug)
-                  ? "text-indigo-600 border-b-2 border-indigo-600"
-                  : "text-gray-600 hover:text-indigo-600"
+                  ? "text-indigo-600 border-indigo-600"
+                  : "text-gray-600 hover:text-indigo-600 hover:border-indigo-200"
               }`}
             >
               {cat.name}
