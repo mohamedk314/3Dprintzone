@@ -419,8 +419,119 @@ The admin dashboard is at `https://yourdomain.com/admin`.
 | **Custom requests** | Review customer-submitted custom-print requests (architecture, gift, dental, mechanical) and approve or reject |
 | **Reviews** | Moderate customer reviews — approve or reject before they appear publicly |
 | **Shipping** | Configure shipping zones, methods, and rates |
-| **Settings** | Update the announcement bar text and other site-wide content |
+| **Settings** | _(Super-admin only)_ Three sub-tabs: **General Settings**, **3dprintzone**, and **RAYK** — homepage hero & visuals for each brand, contact details, SEO defaults, shipping fees, the announcement bar, and per-brand legal pages |
 | **Admins** | (Super-admin only) Add or deactivate other admin accounts |
+
+> **Settings access is restricted.** The Settings tab is hidden for normal admins and `/admin/settings` returns an "Access denied" screen if visited directly. All settings APIs (`/api/admin/settings/*`) require `super_admin` role server-side, so the UI hide is backed by real authorization.
+
+### `/admin/settings` — three sub-tabs
+
+The Settings page is split into three sub-tabs. All three live on the same `/admin/settings` URL; the active tab is held in component state and the entire settings blob is saved with one button at the bottom.
+
+| Tab | What it controls |
+| --- | --- |
+| **General Settings** | Top-bar announcement, shared **Business Contact** (phone, WhatsApp, email, address, Instagram, InstaPay), **/contact** page content (title, meta, intro, working hours, map embed), **Global SEO defaults** (meta title, description, OG image), **Maintenance Mode** (toggle + title + message + optional expected-back note), and **Shipping Fee** mode |
+| **3dprintzone** | **Homepage hero** — fully editable: badge, two-line headline, subtitle, primary & secondary CTA (text + link), main 3D printer image + alt. The four floating hero cards (title, subtitle, image, alt), the four trust badges, the orange Custom Request CTA block, **3dprintzone Homepage SEO** override, the 3dprintzone footer tagline & copyright, and the four **3dprintzone Legal & Basic Pages** (`/privacy-policy`, `/terms`, `/refund-policy`, `/shipping-policy`) |
+| **RAYK** | RAYK hero (kicker, gold title accent, subtitle, CTA, background image), **RAYK Lighting Fixtures** — the 3 lamp images that float beside the hero (title, description, image, alt, link href, published toggle for each), the four hero-feature labels, the four benefits cards, the four bottom black-strip cards, RAYK section headings, RAYK announcement banner (optional), **RAYK SEO**, **RAYK Contact Overrides** (per-brand phone/WhatsApp/email/address/working hours/Instagram — blank inherits from General), RAYK footer tagline & copyright, **RAYK Contact Page** (`/rayk/contact`), and the four **RAYK Legal & Basic Pages** (`/rayk/privacy-policy`, `/rayk/terms`, `/rayk/refund-policy`, `/rayk/shipping-policy`) |
+
+> Both 3dprintzone and RAYK have **separate, independently editable** privacy/terms/refund/shipping pages. Each set is rendered with its brand's visual identity — 3dprintzone in white/indigo, RAYK in black/cream with tracked uppercase type.
+
+### Maintenance Mode
+
+When the super admin toggles Maintenance Mode on in **Settings → General Settings**, every public storefront route is replaced server-side with a clean maintenance screen showing the configured title, message, and (optional) expected-back note. Admin pages and admin APIs keep working, so the super admin can turn maintenance back off without losing access.
+
+**Blocked when on:**
+
+`/`, `/shop`, `/product/[slug]`, `/category/[slug]`, `/cart`, `/checkout`, `/wishlist`, `/track-order`, `/custom-request`, `/privacy-policy`, `/terms`, `/refund-policy`, `/shipping-policy`, `/contact`, `/rayk`, `/rayk/shop`, `/rayk/product/[slug]`, `/rayk/category/[slug]`, `/rayk/cart`, `/rayk/checkout`, `/rayk/wishlist`, `/rayk/track-order`, `/rayk/privacy-policy`, `/rayk/terms`, `/rayk/refund-policy`, `/rayk/shipping-policy`, `/rayk/contact`.
+
+**Never blocked:**
+
+`/admin/*` (including `/admin/login`), `/api/admin/*`, `/api/customer/auth/*`, static assets under `/_next/*`, and any URL ending in a file extension (`.png`, `.jpg`, `.webp`, `.svg`, `.ico`). The maintenance gate is enforced in the root layout using a pathname header set by `src/proxy.ts` — so it works at the server-render level (not just a client redirect) and survives a hard reload.
+
+**How to turn it on/off:** Log in to `/admin`, open Settings (super-admin only), switch to the General Settings tab, tick or untick **Maintenance Mode**, and save. The next request hits the new state.
+
+**Test before launch:** Toggle the mode on, refresh `/` in an incognito window (expect the maintenance screen), then visit `/admin` in your authenticated browser (expect the dashboard). Toggle off and confirm `/` returns to normal.
+
+**How images work:**
+
+- Each image field has a live preview thumbnail.
+- Click **Upload Image** to send a JPG/PNG/WebP (max 10 MB) directly to Cloudflare R2 (uses the same upload pipeline as products). The URL is then saved into settings.
+- You can also paste a direct URL, or a path under `/public/` (e.g. `/3dprinter.png`) to reuse a bundled asset.
+- The **Clear** button restores the bundled default on next save.
+
+**Required environment variables for R2 uploads** (already configured in production):
+
+- `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL`
+
+If R2 is not configured, the upload button will return a 503 — you can still paste image URLs manually.
+
+**Where the data lives:**
+
+Homepage and business settings are stored in the `SiteSetting` table under the key `site_settings_v1` as a JSON blob. No additional table is required. The migration that originally created `SiteSetting` is already in `prisma/migrations/`.
+
+**Production migration command:**
+
+```bash
+npx prisma migrate deploy
+```
+
+(No new migration is needed for this feature — it reuses the existing `SiteSetting` key/value table.)
+
+**Defaults & fallbacks:**
+
+If a field is left empty or settings have never been saved, the storefront falls back to the original hardcoded values (printer image at `/3dprinter.png`, phone `+201012708316`, etc.). Defaults live in `src/lib/services/site-settings-types.ts`.
+
+**API endpoints:**
+
+- `GET /api/admin/settings/site` — read current settings (super-admin only)
+- `PATCH /api/admin/settings/site` — save settings (super-admin only, ≤ 48 KB)
+- `GET /api/storefront/site-settings` — public read for the storefront
+
+### Legal & basic pages — separate sets per brand
+
+Each brand has its own privacy / terms / refund / shipping / contact pages. Editing them lives in the matching settings sub-tab (3dprintzone or RAYK).
+
+| Brand | Routes | Edit location |
+| --- | --- | --- |
+| **3dprintzone** | `/privacy-policy`, `/terms`, `/refund-policy`, `/shipping-policy`, `/contact` | Settings → **3dprintzone** tab (legal pages) + Settings → **General Settings** tab (contact page content) |
+| **RAYK** | `/rayk/privacy-policy`, `/rayk/terms`, `/rayk/refund-policy`, `/rayk/shipping-policy`, `/rayk/contact` | Settings → **RAYK** tab (legal pages **and** RAYK contact page) |
+
+**Editable per page:** title, meta title, meta description, body, and a Published/Hidden toggle. The `/contact` pages additionally have intro paragraph, working hours, and an optional Google Maps embed URL.
+
+**Content format:** Plain text. Blank lines separate paragraphs. A short line followed by more text becomes a subheading. No HTML and no Markdown processor — content is rendered safely as React nodes (never `dangerouslySetInnerHTML`).
+
+**Per-page limits:** 5,000 characters of body, 80-char titles, 200-char meta descriptions.
+
+**Disabling a page:** Untick the "Published" checkbox to make that route return a 404. Each brand is toggled independently.
+
+**Footer links:** the storefront footer (3dprintzone) lists 3dprintzone legal links under "Support"; the RAYK footer lists `/rayk/*` legal links under its "Legal" column. Both sets are included in `sitemap.xml`.
+
+**Where they're stored:** All settings (homepage + business + both brands' legal pages) live in the existing `SiteSetting` row (key `site_settings_v1`) as a JSON blob. Defaults live in `src/lib/services/site-settings-types.ts` — if a page has never been saved, the public route renders the default content so the site can never 404 on a missing settings row.
+
+**No database migration required.** The existing `SiteSetting` key/value Text table holds everything. For production rollout the standard command is still:
+
+```bash
+npx prisma migrate deploy
+```
+
+(no-op for this feature — kept here as a reminder for general operations).
+
+**API endpoints (super-admin only):**
+
+- `GET /api/admin/settings/site` — read full settings blob
+- `PATCH /api/admin/settings/site` — save full settings blob (≤ 60 KB)
+- `GET /api/storefront/site-settings` — public read; only safe public fields
+- `PATCH /api/admin/settings/announcement` — top-bar announcement (super-admin)
+- `PATCH /api/admin/settings/shipping` — shipping fee mode (super-admin)
+
+### Empty & loading states
+
+This release adds polished empty and loading states across:
+
+- **Admin** — products, categories, orders, custom requests, reviews, admins (with single-super-admin notice), shipping methods, shipping zones, settings. All list pages show skeleton rows while loading and a styled empty state with a clear CTA when the list is empty.
+- **Storefront** — `/cart`, `/wishlist`, `/shop`, `/category/[slug]`, `/track-order`, plus the RAYK equivalents. Shop now invites the customer to submit a custom request when no products exist.
+- **Customer** — `/account/orders` shows a "no orders yet" state with a Start Shopping CTA.
+- **Mutations** — Add to cart, wishlist toggle, cart qty updates, checkout submit, custom-request submit, OTP send/verify, admin save/upload/update buttons all switch to a verb-tense state (`Saving…`, `Sending…`, `Verifying…`, `Uploading…`, `Tracking…`) and are disabled while the request is in flight to prevent double submits.
 
 ### What you should not edit manually
 

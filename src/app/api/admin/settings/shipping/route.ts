@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
+import { requireSuperAdmin } from "@/lib/auth/admin-session";
 import { getShippingConfig, setShippingConfig } from "@/lib/services/shipping";
 
 export const dynamic = "force-dynamic";
@@ -7,18 +7,19 @@ export const runtime = "nodejs";
 
 export async function GET() {
   try {
-    await requireAuthenticatedAdmin();
+    await requireSuperAdmin();
     const config = await getShippingConfig();
     return NextResponse.json({ success: true, data: config });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
-    return NextResponse.json({ success: false, message }, { status: message === "Unauthorized" ? 401 : 500 });
+    const status = message === "Unauthorized" ? 401 : message.startsWith("Forbidden") ? 403 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAuthenticatedAdmin();
+    await requireSuperAdmin();
     const body = await req.json();
 
     const type = body.type;
@@ -35,6 +36,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, data: { type, amount } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
-    return NextResponse.json({ success: false, message }, { status: message === "Unauthorized" ? 401 : 500 });
+    const status = message === "Unauthorized" ? 401 : message.startsWith("Forbidden") ? 403 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

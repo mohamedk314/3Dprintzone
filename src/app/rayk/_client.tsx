@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { DEFAULT_SITE_SETTINGS, type RaykSettings } from "@/lib/services/site-settings-types";
 
 interface Category {
   id: string;
@@ -12,6 +13,33 @@ interface Category {
   iconKey?: string | null;
   description?: string | null;
   _count?: { products: number };
+}
+
+interface Testimonial {
+  id: string;
+  name: string;
+  rating: number;
+  body: string | null;
+  createdAt: string;
+  product: { id: string; name: string; slug: string };
+}
+
+function TestimonialStars({ rating }: { rating: number }) {
+  return (
+    <span className="inline-flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg
+          key={i}
+          className={`w-3 h-3 ${i <= rating ? "text-black" : "text-black/15"}`}
+          fill="currentColor"
+          viewBox="0 0 20 20"
+          aria-hidden="true"
+        >
+          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+        </svg>
+      ))}
+    </span>
+  );
 }
 
 function CategoryFallbackIcon({ iconKey, className = "w-10 h-10" }: { iconKey?: string | null; className?: string }) {
@@ -358,6 +386,9 @@ const PAGE_STYLES = `
 export default function RaykHomePageClient() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [testimonialsLoading, setTestimonialsLoading] = useState(true);
+  const [rayk, setRayk] = useState<RaykSettings>(DEFAULT_SITE_SETTINGS.rayk);
   const lampLeftRef = useRef<HTMLDivElement>(null);
   const lampMidRef = useRef<HTMLDivElement>(null);
   const lampRightRef = useRef<HTMLDivElement>(null);
@@ -368,6 +399,17 @@ export default function RaykHomePageClient() {
       .then((d) => setCategories(Array.isArray(d?.data) ? d.data : []))
       .catch(() => setCategories([]))
       .finally(() => setLoading(false));
+
+    fetch("/api/storefront/reviews?brand=rayk&limit=6", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => setTestimonials(Array.isArray(d?.data) ? d.data : []))
+      .catch(() => setTestimonials([]))
+      .finally(() => setTestimonialsLoading(false));
+
+    fetch("/api/storefront/site-settings", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data?.rayk) setRayk(d.data.rayk); })
+      .catch(() => {});
   }, []);
 
   // Scroll-based lamp animation (respects prefers-reduced-motion).
@@ -420,8 +462,8 @@ export default function RaykHomePageClient() {
         {/* Background image */}
         <div className="absolute inset-0">
           <Image
-            src="/rayk/hero.png"
-            alt="RAYK ambient interior"
+            src={rayk.hero.backgroundImageUrl || "/rayk/hero.png"}
+            alt={rayk.hero.backgroundImageAlt || "RAYK ambient interior"}
             fill
             priority
             sizes="100vw"
@@ -448,64 +490,53 @@ export default function RaykHomePageClient() {
           />
         </div>
 
-        {/* Lamps (pointer-events-none, layered above the background) */}
+        {/* Lamps — each one is editable from /admin/settings → RAYK tab.
+            Disabled fixtures fall back to the bundled default image so the
+            hero composition never collapses. */}
         <div className="absolute inset-0 pointer-events-none">
-          <div
-            ref={lampLeftRef}
-            className="absolute rayk-lamp rayk-lamp-left"
-            style={{
-              aspectRatio: "1024 / 1536",
-              transformOrigin: "top center",
-              filter: "drop-shadow(0 12px 24px rgba(0,0,0,0.55))",
-            }}
-          >
-            <Image
-              src="/rayk/lamp1.png"
-              alt=""
-              fill
-              sizes="(max-width: 767px) 30vw, (max-width: 1024px) 17vw, 230px"
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div
-            ref={lampMidRef}
-            className="absolute rayk-lamp rayk-lamp-mid"
-            style={{
-              aspectRatio: "1024 / 1536",
-              transformOrigin: "top center",
-              filter:
-                "drop-shadow(0 18px 30px rgba(0,0,0,0.55)) drop-shadow(0 0 30px rgba(242, 184, 101, 0.16))",
-            }}
-          >
-            <Image
-              src="/rayk/lamp2.png"
-              alt=""
-              fill
-              sizes="(max-width: 767px) 38vw, (max-width: 1024px) 21vw, 300px"
-              className="object-contain"
-              priority
-            />
-          </div>
-          <div
-            ref={lampRightRef}
-            className="absolute rayk-lamp rayk-lamp-right"
-            style={{
-              aspectRatio: "1024 / 1536",
-              transformOrigin: "top center",
-              filter:
-                "drop-shadow(0 22px 36px rgba(0,0,0,0.6)) drop-shadow(0 0 50px rgba(242, 184, 101, 0.18))",
-            }}
-          >
-            <Image
-              src="/rayk/lamp3.png"
-              alt=""
-              fill
-              sizes="(max-width: 767px) 46vw, (max-width: 1024px) 28vw, 410px"
-              className="object-contain"
-              priority
-            />
-          </div>
+          {(() => {
+            const fixtures = rayk.lightingFixtures;
+            const fallback = ["/rayk/lamp1.png", "/rayk/lamp2.png", "/rayk/lamp3.png"];
+            const lampRefs = [lampLeftRef, lampMidRef, lampRightRef] as const;
+            const lampClasses = ["rayk-lamp-left", "rayk-lamp-mid", "rayk-lamp-right"] as const;
+            const lampSizes = [
+              "(max-width: 767px) 30vw, (max-width: 1024px) 17vw, 230px",
+              "(max-width: 767px) 38vw, (max-width: 1024px) 21vw, 300px",
+              "(max-width: 767px) 46vw, (max-width: 1024px) 28vw, 410px",
+            ];
+            const lampFilters = [
+              "drop-shadow(0 12px 24px rgba(0,0,0,0.55))",
+              "drop-shadow(0 18px 30px rgba(0,0,0,0.55)) drop-shadow(0 0 30px rgba(242, 184, 101, 0.16))",
+              "drop-shadow(0 22px 36px rgba(0,0,0,0.6)) drop-shadow(0 0 50px rgba(242, 184, 101, 0.18))",
+            ];
+            return [0, 1, 2].map((i) => {
+              const f = fixtures[i];
+              if (!f.enabled) return null;
+              const src = f.imageUrl || fallback[i];
+              const alt = f.imageAlt || f.title || "";
+              return (
+                <div
+                  key={i}
+                  ref={lampRefs[i]}
+                  className={`absolute rayk-lamp ${lampClasses[i]}`}
+                  style={{
+                    aspectRatio: "1024 / 1536",
+                    transformOrigin: "top center",
+                    filter: lampFilters[i],
+                  }}
+                >
+                  <Image
+                    src={src}
+                    alt={alt}
+                    fill
+                    sizes={lampSizes[i]}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+              );
+            });
+          })()}
         </div>
 
         {/* Hero text block */}
@@ -554,7 +585,7 @@ export default function RaykHomePageClient() {
               opacity: 0.85,
             }}
           >
-            Custom 3D Printed
+            {rayk.hero.kicker}
           </p>
           <h1
             className="mt-2 uppercase whitespace-nowrap"
@@ -566,7 +597,7 @@ export default function RaykHomePageClient() {
               lineHeight: 1.15,
             }}
           >
-            Lighting Fixtures
+            {rayk.hero.titleAccent}
           </h1>
           <p
             className="mt-5 max-w-[340px]"
@@ -577,11 +608,11 @@ export default function RaykHomePageClient() {
               opacity: 0.78,
             }}
           >
-            Unique designs. Precision printed. Made to light up your space.
+            {rayk.hero.subtitle}
           </p>
 
           <Link
-            href="/rayk/shop"
+            href={rayk.hero.ctaHref || "/rayk/shop"}
             className="rayk-cta group mt-7 inline-flex items-center justify-center gap-3 uppercase"
             style={{
               color: "#F8F7F2",
@@ -595,7 +626,7 @@ export default function RaykHomePageClient() {
               background: "transparent",
             }}
           >
-            Shop Now
+            {rayk.hero.ctaText || "Shop Now"}
             <svg
               className="transition-transform duration-300 group-hover:translate-x-1"
               width="16"
@@ -613,26 +644,29 @@ export default function RaykHomePageClient() {
         <div className="rayk-hero-features">
           <div className="mx-auto px-5 sm:px-8 lg:px-[110px] xl:px-[130px]" style={{ maxWidth: "1440px" }}>
             <div className="grid grid-cols-2 md:flex md:flex-row md:flex-wrap items-start gap-x-6 gap-y-3 md:gap-x-10 lg:gap-x-[48px] xl:gap-x-[60px]">
-              {HERO_FEATURES.map((f, i) => (
-                <div key={i} className="flex items-center gap-3 min-w-0">
-                  <span style={{ color: "#D5B98C" }} className="shrink-0">
-                    {f.icon}
-                  </span>
-                  <p
-                    className="uppercase whitespace-pre-line"
-                    style={{
-                      color: "#F8F7F2",
-                      fontSize: "clamp(10px, 0.72vw, 11px)",
-                      letterSpacing: "0.2em",
-                      lineHeight: 1.5,
-                      fontWeight: 500,
-                      opacity: 0.92,
-                    }}
-                  >
-                    {f.label}
-                  </p>
-                </div>
-              ))}
+              {HERO_FEATURES.map((f, i) => {
+                const override = rayk.heroFeatures[i]?.title?.trim();
+                return (
+                  <div key={i} className="flex items-center gap-3 min-w-0">
+                    <span style={{ color: "#D5B98C" }} className="shrink-0">
+                      {f.icon}
+                    </span>
+                    <p
+                      className="uppercase whitespace-pre-line"
+                      style={{
+                        color: "#F8F7F2",
+                        fontSize: "clamp(10px, 0.72vw, 11px)",
+                        letterSpacing: "0.2em",
+                        lineHeight: 1.5,
+                        fontWeight: 500,
+                        opacity: 0.92,
+                      }}
+                    >
+                      {override || f.label}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -648,38 +682,42 @@ export default function RaykHomePageClient() {
               borderBottom: "1px solid #E5E1D8",
             }}
           >
-            {BENEFITS.map((b, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5"
-              >
-                <span style={{ color: "#151515" }} className="shrink-0">
-                  {b.icon}
-                </span>
-                <div className="min-w-0">
-                  <p
-                    style={{
-                      color: "#151515",
-                      fontWeight: 600,
-                      fontSize: "clamp(13px, 0.95vw, 15px)",
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {b.title}
-                  </p>
-                  <p
-                    className="mt-0.5"
-                    style={{
-                      color: "#77736D",
-                      fontSize: "clamp(12px, 0.85vw, 13px)",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {b.subtitle}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {BENEFITS.map((b, i) => {
+              const titleOverride = rayk.benefits[i]?.title?.trim();
+              const subtitleOverride = rayk.benefits[i]?.subtitle?.trim();
+              return (
+                <li
+                  key={i}
+                  className="flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-4 sm:py-5"
+                >
+                  <span style={{ color: "#151515" }} className="shrink-0">
+                    {b.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      style={{
+                        color: "#151515",
+                        fontWeight: 600,
+                        fontSize: "clamp(13px, 0.95vw, 15px)",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {titleOverride || b.title}
+                    </p>
+                    <p
+                      className="mt-0.5"
+                      style={{
+                        color: "#77736D",
+                        fontSize: "clamp(12px, 0.85vw, 13px)",
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {subtitleOverride || b.subtitle}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>
@@ -697,7 +735,7 @@ export default function RaykHomePageClient() {
                 fontWeight: 700,
               }}
             >
-              Shop by Category
+              {rayk.sections.categoriesTitle || "Shop by Category"}
             </h2>
             <Link
               href="/rayk/shop"
@@ -709,7 +747,7 @@ export default function RaykHomePageClient() {
                 fontWeight: 500,
               }}
             >
-              View All
+              {rayk.sections.categoriesViewAllText || "View All"}
               <svg width="14" height="9" viewBox="0 0 14 9" fill="none" aria-hidden="true">
                 <path d="M1 4.5h11M9 1l3 3.5L9 8" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
@@ -828,45 +866,180 @@ export default function RaykHomePageClient() {
         </div>
       </section>
 
+      {/* ============================= TESTIMONIALS ============================= */}
+      {(testimonialsLoading || testimonials.length > 0) && (
+        <section
+          style={{ background: "#F7F6F2" }}
+          className="pt-6 sm:pt-8 pb-10 sm:pb-14"
+        >
+          <div className="mx-auto px-5 sm:px-8 lg:px-12" style={{ maxWidth: "1240px" }}>
+            <div className="flex items-end justify-between gap-4 mb-5 sm:mb-7 flex-wrap">
+              <div>
+                <p
+                  className="uppercase mb-1"
+                  style={{
+                    color: "#77736D",
+                    fontSize: "11px",
+                    letterSpacing: "0.3em",
+                    fontWeight: 600,
+                  }}
+                >
+                  {rayk.sections.testimonialsKicker || "Loved by our customers"}
+                </p>
+                <h2
+                  className="uppercase"
+                  style={{
+                    color: "#151515",
+                    fontSize: "clamp(15px, 1.4vw, 18px)",
+                    letterSpacing: "0.28em",
+                    fontWeight: 700,
+                  }}
+                >
+                  {rayk.sections.testimonialsTitle || "What they say"}
+                </h2>
+              </div>
+            </div>
+
+            {testimonialsLoading ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse"
+                    style={{
+                      background: "#F2F1ED",
+                      border: "1px solid rgba(0,0,0,0.04)",
+                      borderRadius: "10px",
+                      height: "200px",
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                {testimonials.slice(0, 6).map((t) => (
+                  <li
+                    key={t.id}
+                    className="flex flex-col p-5 sm:p-6"
+                    style={{
+                      background: "#F2F1ED",
+                      border: "1px solid rgba(0,0,0,0.04)",
+                      borderRadius: "10px",
+                      minHeight: "200px",
+                    }}
+                  >
+                    <TestimonialStars rating={t.rating} />
+                    {t.body ? (
+                      <p
+                        className="mt-3 line-clamp-5 grow"
+                        style={{
+                          color: "#3a3833",
+                          fontSize: "14px",
+                          lineHeight: 1.6,
+                          letterSpacing: "0.01em",
+                        }}
+                      >
+                        &ldquo;{t.body}&rdquo;
+                      </p>
+                    ) : (
+                      <p
+                        className="mt-3 grow"
+                        style={{ color: "#77736D", fontSize: "13px", fontStyle: "italic" }}
+                      >
+                        Loved their purchase.
+                      </p>
+                    )}
+                    <div
+                      className="mt-4 pt-4 flex items-center justify-between gap-3"
+                      style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}
+                    >
+                      <div className="min-w-0">
+                        <p
+                          className="uppercase truncate"
+                          style={{
+                            color: "#151515",
+                            fontSize: "12px",
+                            letterSpacing: "0.16em",
+                            fontWeight: 700,
+                          }}
+                        >
+                          {t.name}
+                        </p>
+                        <Link
+                          href={`/rayk/product/${t.product.slug}`}
+                          className="block truncate hover:underline transition-colors"
+                          style={{
+                            color: "#77736D",
+                            fontSize: "11px",
+                            letterSpacing: "0.06em",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {t.product.name}
+                        </Link>
+                      </div>
+                      <span
+                        className="uppercase shrink-0"
+                        style={{
+                          color: "#A6A29A",
+                          fontSize: "10px",
+                          letterSpacing: "0.18em",
+                        }}
+                      >
+                        {new Date(t.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* ========================== BOTTOM BLACK FEATURE STRIP ========================= */}
       <section style={{ background: "#050505" }}>
         <div className="mx-auto px-5 sm:px-8 lg:px-12" style={{ maxWidth: "1240px" }}>
           <ul className="rayk-bottom-list grid grid-cols-1 min-[480px]:grid-cols-2 md:grid-cols-4">
-            {BOTTOM_FEATURES.map((f, i) => (
-              <li
-                key={i}
-                className="flex items-center gap-4 px-4 sm:px-6 py-6 md:py-8"
-              >
-                <span style={{ color: "#D5B98C" }} className="shrink-0">
-                  {f.icon}
-                </span>
-                <div className="min-w-0">
-                  <p
-                    className="uppercase"
-                    style={{
-                      color: "#F8F7F2",
-                      fontSize: "12px",
-                      letterSpacing: "0.22em",
-                      fontWeight: 600,
-                      lineHeight: 1.3,
-                    }}
-                  >
-                    {f.title}
-                  </p>
-                  <p
-                    className="mt-1"
-                    style={{
-                      color: "#D5D0C7",
-                      fontSize: "12px",
-                      lineHeight: 1.45,
-                      opacity: 0.8,
-                    }}
-                  >
-                    {f.subtitle}
-                  </p>
-                </div>
-              </li>
-            ))}
+            {BOTTOM_FEATURES.map((f, i) => {
+              const titleOverride = rayk.bottomFeatures[i]?.title?.trim();
+              const subtitleOverride = rayk.bottomFeatures[i]?.subtitle?.trim();
+              return (
+                <li
+                  key={i}
+                  className="flex items-center gap-4 px-4 sm:px-6 py-6 md:py-8"
+                >
+                  <span style={{ color: "#D5B98C" }} className="shrink-0">
+                    {f.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p
+                      className="uppercase"
+                      style={{
+                        color: "#F8F7F2",
+                        fontSize: "12px",
+                        letterSpacing: "0.22em",
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {titleOverride || f.title}
+                    </p>
+                    <p
+                      className="mt-1"
+                      style={{
+                        color: "#D5D0C7",
+                        fontSize: "12px",
+                        lineHeight: 1.45,
+                        opacity: 0.8,
+                      }}
+                    >
+                      {subtitleOverride || f.subtitle}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         </div>
       </section>

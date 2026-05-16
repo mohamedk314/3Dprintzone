@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/services/site-settings-types";
 
 interface Order {
   id: string;
@@ -64,9 +65,14 @@ function TrackOrderPage() {
   const [loading, setLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [whatsappPhone, setWhatsappPhone] = useState(DEFAULT_SITE_SETTINGS.contact.whatsappPhone);
 
   useEffect(() => {
     fetch("/api/customer/me").then((r) => r.json()).then((d) => setIsLoggedIn(!!d.success));
+    fetch("/api/storefront/site-settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data?.contact?.whatsappPhone) setWhatsappPhone(d.data.contact.whatsappPhone); })
+      .catch(() => {});
   }, []);
 
   async function searchOrder(orderRef: string) {
@@ -132,18 +138,42 @@ function TrackOrderPage() {
           <button
             onClick={() => searchOrder(ref)}
             disabled={loading || !ref.trim()}
-            className="bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50"
+            className="press bg-indigo-600 text-white font-semibold px-6 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 inline-flex items-center gap-2"
           >
-            {loading ? "..." : "Track"}
+            {loading ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Tracking…
+              </>
+            ) : "Track"}
           </button>
         </div>
       </div>
 
+      {/* Looking up */}
+      {loading && (
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center anim-fade-slide-in">
+          <svg className="w-8 h-8 mx-auto mb-3 text-indigo-500 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-sm text-gray-500">Looking up your order…</p>
+        </div>
+      )}
+
       {/* Not found */}
       {notFound && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-6 text-center">
-          <p className="font-semibold">Order not found</p>
-          <p className="text-sm mt-1">Please check the reference number and try again</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 sm:p-10 text-center anim-fade-slide-in">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-red-50 text-red-500 mb-3">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <p className="font-semibold text-gray-900 text-base">No order found with that reference</p>
+          <p className="text-sm text-gray-500 mt-1">Double-check the reference number from your confirmation email or message.</p>
         </div>
       )}
 
@@ -324,7 +354,7 @@ function TrackOrderPage() {
           <div className="bg-indigo-50 rounded-2xl border border-indigo-100 p-5 text-center">
             <p className="text-sm text-indigo-700 font-medium mb-2">Need help with your order?</p>
             <a
-              href={`https://wa.me/201012708316?text=Hi, I need help with order ${order.orderRef}`}
+              href={`https://wa.me/${whatsappPhone}?text=Hi, I need help with order ${order.orderRef}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-green-500 text-white font-semibold text-sm px-5 py-2 rounded-full hover:bg-green-600 transition-colors"
@@ -340,12 +370,16 @@ function TrackOrderPage() {
 
       {/* No search yet */}
       {!order && !loading && !notFound && (
-        <div className="text-center py-8 text-gray-400">
-          <svg className="w-16 h-16 mx-auto mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          <p className="text-sm">Enter your order reference above to track it</p>
-          <p className="text-xs mt-1">You received the reference in your order confirmation</p>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 sm:p-10 text-center">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-500 mb-3">
+            <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <p className="font-semibold text-gray-900 text-base mb-1">Enter your order reference</p>
+          <p className="text-sm text-gray-500 max-w-sm mx-auto">
+            Use the reference from your order confirmation email or message — it looks like <span className="font-mono text-gray-700">ORD-XXXXXXXX</span>.
+          </p>
         </div>
       )}
     </div>

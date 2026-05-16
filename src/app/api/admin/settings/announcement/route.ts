@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
+import { requireSuperAdmin } from "@/lib/auth/admin-session";
 import { prisma } from "@/lib/db/prisma";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireAuthenticatedAdmin();
+    await requireSuperAdmin();
     const body = await req.json();
 
     const text = typeof body.text === "string" ? body.text.trim() : null;
@@ -27,6 +27,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ success: true, data: { text } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Server error";
-    return NextResponse.json({ success: false, message }, { status: message === "Unauthorized" ? 401 : 500 });
+    const status = message === "Unauthorized" ? 401 : message.startsWith("Forbidden") ? 403 : 500;
+    return NextResponse.json({ success: false, message }, { status });
   }
 }

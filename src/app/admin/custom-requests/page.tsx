@@ -74,10 +74,14 @@ function CustomRequestsInner() {
   }, [status, type, search, page]);
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-5">
       <div>
         <h1 className="text-xl font-bold text-gray-900">Custom Requests</h1>
-        {meta && <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>}
+        {meta ? (
+          <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>
+        ) : (
+          <p className="text-sm text-gray-300 mt-0.5">Loading…</p>
+        )}
       </div>
 
       {/* Filters */}
@@ -87,15 +91,15 @@ function CustomRequestsInner() {
             placeholder="Search name, email..."
             className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400 bg-white"
           />
-          <button type="submit" className="border border-gray-200 bg-white text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50">Search</button>
+          <button type="submit" className="border border-gray-200 bg-white text-gray-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors press">Search</button>
         </form>
         <select value={status} onChange={(e) => setParam("status", e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-indigo-400"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-indigo-400 transition-colors"
         >
           {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <select value={type} onChange={(e) => setParam("type", e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-indigo-400"
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-indigo-400 transition-colors"
         >
           {TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -104,9 +108,23 @@ function CustomRequestsInner() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-6 space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : requests.length === 0 ? (
-          <div className="p-12 text-center text-gray-400 text-sm">No requests found.</div>
+          <div className="p-10 sm:p-14 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 mb-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">No custom requests yet</p>
+            <p className="text-xs text-gray-500">
+              {search || status || type ? "Try clearing filters." : "Customer requests will appear here."}
+            </p>
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -160,10 +178,10 @@ function CustomRequestsInner() {
                 <p className="text-xs text-gray-500">Page {meta.page} of {meta.pages}</p>
                 <div className="flex gap-2">
                   <button onClick={() => setParam("page", String(page - 1))} disabled={page <= 1}
-                    className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                    className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors press"
                   >← Prev</button>
                   <button onClick={() => setParam("page", String(page + 1))} disabled={page >= meta.pages}
-                    className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50"
+                    className="text-xs border border-gray-200 px-3 py-1.5 rounded-lg disabled:opacity-40 hover:bg-gray-50 transition-colors press"
                   >Next →</button>
                 </div>
               </div>

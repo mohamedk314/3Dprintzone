@@ -39,7 +39,7 @@ export default function EditProductPage() {
 
   if (loading) {
     return (
-      <div className="p-6 space-y-5 max-w-2xl animate-pulse">
+      <div className="p-4 sm:p-6 space-y-5 max-w-2xl animate-pulse">
         <div className="h-6 bg-gray-200 rounded w-40" />
         <div className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -58,9 +58,20 @@ export default function EditProductPage() {
 
   if (notFound || !product) {
     return (
-      <div className="p-6 text-center">
-        <p className="text-gray-500">Product not found.</p>
-        <Link href="/admin/products" className="text-indigo-600 hover:underline text-sm mt-2 block">← Back to Products</Link>
+      <div className="p-6 sm:p-10 text-center">
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-red-50 text-red-500 mb-3">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-gray-900 mb-1">Product not found</p>
+        <p className="text-xs text-gray-500 mb-4">The product may have been removed.</p>
+        <Link href="/admin/products" className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Products
+        </Link>
       </div>
     );
   }
@@ -83,14 +94,18 @@ export default function EditProductPage() {
   };
 
   return (
-    <div className="p-6 space-y-5 max-w-2xl">
+    <div className="p-4 sm:p-6 space-y-5 max-w-2xl">
       <div className="flex items-center gap-3">
-        <Link href="/admin/products" className="text-gray-400 hover:text-gray-600 transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <Link
+          href="/admin/products"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors press"
+          aria-label="Back to products"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </Link>
-        <div>
+        <div className="min-w-0">
           <h1 className="text-xl font-bold text-gray-900">Edit Product</h1>
           <p className="text-sm text-gray-500 truncate max-w-xs">{product.name}</p>
         </div>

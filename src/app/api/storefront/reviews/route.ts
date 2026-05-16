@@ -9,7 +9,40 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const productId = searchParams.get("productId");
-    if (!productId) return NextResponse.json({ success: false, message: "productId required" }, { status: 400 });
+    const brand = searchParams.get("brand");
+    const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? "20"), 1), 50);
+
+    // Brand-wide fetch: returns approved reviews across all products of the brand.
+    if (!productId && brand) {
+      const reviews = await prisma.review.findMany({
+        where: { status: "approved", product: { brand } },
+        orderBy: { createdAt: "desc" },
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          rating: true,
+          body: true,
+          createdAt: true,
+          product: { select: { id: true, name: true, slug: true } },
+        },
+      });
+
+      const total = reviews.length;
+      const avg = total > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / total : 0;
+      return NextResponse.json({
+        success: true,
+        data: reviews,
+        meta: { total, avg: Math.round(avg * 10) / 10 },
+      });
+    }
+
+    if (!productId) {
+      return NextResponse.json(
+        { success: false, message: "productId or brand is required" },
+        { status: 400 }
+      );
+    }
 
     const reviews = await prisma.review.findMany({
       where: { productId, status: "approved" },
@@ -20,7 +53,11 @@ export async function GET(req: NextRequest) {
     const total = reviews.length;
     const avg = total > 0 ? reviews.reduce((s, r) => s + r.rating, 0) / total : 0;
 
-    return NextResponse.json({ success: true, data: reviews, meta: { total, avg: Math.round(avg * 10) / 10 } });
+    return NextResponse.json({
+      success: true,
+      data: reviews,
+      meta: { total, avg: Math.round(avg * 10) / 10 },
+    });
   } catch {
     return NextResponse.json({ success: false, message: "Server error" }, { status: 500 });
   }
@@ -33,14 +70,22 @@ export async function POST(req: NextRequest) {
     const { productId, rating, name, body: reviewBody } = body;
 
     if (!productId || !rating || !name) {
-      return NextResponse.json({ success: false, message: "productId, rating, and name are required" }, { status: 400 });
+      return NextResponse.json(
+        { success: false, message: "productId, rating, and name are required" },
+        { status: 400 }
+      );
     }
     if (rating < 1 || rating > 5) {
       return NextResponse.json({ success: false, message: "Rating must be 1–5" }, { status: 400 });
     }
 
-    const product = await prisma.product.findUnique({ where: { id: productId }, select: { id: true } });
-    if (!product) return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
+    const product = await prisma.product.findUnique({
+      where: { id: productId },
+      select: { id: true },
+    });
+    if (!product) {
+      return NextResponse.json({ success: false, message: "Product not found" }, { status: 404 });
+    }
 
     const email = session?.email ?? "guest@anonymous.com";
 

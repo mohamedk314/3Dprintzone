@@ -72,7 +72,7 @@ const NAV_ITEMS = [
     ),
   },
   {
-    href: "/admin/settings", label: "Settings", exact: false, superOnly: false,
+    href: "/admin/settings", label: "Settings", exact: false, superOnly: true,
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -118,12 +118,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="flex items-center gap-2 text-gray-500 text-sm">
-          <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+        <div className="flex flex-col items-center gap-3 text-gray-500 text-sm">
+          <svg className="animate-spin w-5 h-5 text-indigo-600" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          Loading...
+          <span className="text-xs tracking-wide">Loading admin…</span>
         </div>
       </div>
     );
@@ -158,31 +158,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ${darkMode ? "bg-black" : "bg-gray-900"}
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0 lg:relative lg:flex`}>
         {/* Logo */}
-        <div className="px-4 py-5 border-b border-gray-800">
+        <div className="px-4 py-5 border-b border-gray-800/70">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-500 rounded-lg flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center shrink-0 shadow-[0_2px_8px_-2px_rgba(99,102,241,0.6)]">
               <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
               </svg>
             </div>
-            <span className="font-bold text-sm">3Dprintzone Admin</span>
+            <span className="font-bold text-sm tracking-tight">3Dprintzone Admin</span>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {NAV_ITEMS.filter((item) => !item.superOnly || admin.role === "super_admin").map((item) => (
             <Link
               key={item.href}
               href={item.href}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 ${
                 isActive(item)
-                  ? "bg-indigo-600 text-white"
-                  : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                  ? "bg-indigo-600 text-white shadow-[0_2px_8px_-2px_rgba(99,102,241,0.5)]"
+                  : "text-gray-400 hover:bg-gray-800/80 hover:text-white"
               }`}
             >
-              {item.icon}
+              <span className={isActive(item) ? "" : "transition-transform duration-150 group-hover:scale-110"}>{item.icon}</span>
               {item.label}
             </Link>
           ))}

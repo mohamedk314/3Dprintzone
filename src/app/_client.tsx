@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ProductCard from "@/components/ui/ProductCard";
 import CategoryIcon from "@/components/ui/CategoryIcon";
+import { DEFAULT_SITE_SETTINGS, type SiteSettings } from "@/lib/services/site-settings-types";
 
 interface Category {
   id: string;
@@ -87,10 +88,29 @@ function MiniCard({ img, label }: MiniCardProps) {
   );
 }
 
+const TRUST_BADGE_ICONS = [
+  // Fast Delivery
+  <path key="d" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />,
+  // Quality Guaranteed
+  <path key="q" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
+  // Easy Payment
+  <path key="p" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />,
+  // Custom Designs
+  <path key="c" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
+];
+
+const TRUST_BADGE_COLORS = [
+  "bg-indigo-50 text-indigo-600",
+  "bg-emerald-50 text-emerald-600",
+  "bg-orange-50 text-orange-500",
+  "bg-purple-50 text-purple-600",
+];
+
 export default function HomePageClient() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [featured, setFeatured] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<SiteSettings>(DEFAULT_SITE_SETTINGS);
 
   useEffect(() => {
     Promise.all([
@@ -100,15 +120,18 @@ export default function HomePageClient() {
       setCategories(catData?.data ?? []);
       setFeatured(prodData?.data ?? []);
     }).finally(() => setLoading(false));
+
+    fetch("/api/storefront/site-settings", { credentials: "include" })
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data) setSettings(d.data); })
+      .catch(() => {});
   }, []);
+
+  const { hero, heroCards, trustBadges, customCta } = settings;
 
   return (
     <div>
       {/* ── Hero ── */}
-      {/*
-        Height driven by content + py-10/py-12 — no forced min-h.
-        Desktop: ~540px. Mobile: auto (stacked).
-      */}
       <section className="relative overflow-hidden flex items-center lg:min-h-[620px]">
         {/* Background */}
         <div className="absolute inset-0">
@@ -133,53 +156,44 @@ export default function HomePageClient() {
                 <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                 </svg>
-                Premium 3D Printing in Egypt
+                {hero.badge}
               </span>
 
               <h1 className="text-3xl sm:text-4xl lg:text-[2.6rem] xl:text-5xl 2xl:text-6xl font-extrabold leading-[1.1] mb-4 tracking-tight">
-                Bring Your Ideas
+                {hero.titleLine1}
                 <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 to-amber-200">
-                  to Life in 3D
+                  {hero.titleLine2}
                 </span>
               </h1>
 
               <p className="text-indigo-100/90 text-sm sm:text-base lg:text-base mb-7 leading-relaxed max-w-sm mx-auto lg:mx-0">
-                Shop ready-made 3D printed products or request a fully custom design. Fast delivery across Egypt.
+                {hero.subtitle}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
                 <Link
-                  href="/shop"
+                  href={hero.primaryCtaHref}
                   className="press group inline-flex items-center justify-center gap-2 bg-white text-indigo-700 font-bold px-6 py-3 rounded-full hover:bg-indigo-50 transition-[background-color,transform] duration-200 shadow-xl text-sm"
                 >
-                  Shop Now
+                  {hero.primaryCtaText}
                   <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                   </svg>
                 </Link>
                 <Link
-                  href="/custom-request"
+                  href={hero.secondaryCtaHref}
                   className="press inline-flex items-center justify-center gap-2 border-2 border-white/70 text-white font-bold px-6 py-3 rounded-full hover:bg-white/10 hover:border-white transition-[background-color,border-color,transform] duration-200 text-sm backdrop-blur-sm"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
-                  Custom Request
+                  {hero.secondaryCtaText}
                 </Link>
               </div>
             </div>
 
-            {/* Right: fixed-size visual container — desktop (lg+) only
-                Container dimensions define the composition boundary.
-                Printer is centered and large inside it.
-                Cards are absolute at corners, overlapping printer edges with glassmorphism.
-            */}
-            {/*
-              Visual container is wider than the printer so cards sit in the
-              side margins without crowding the printer body.
-              Printer height ≈ 93% of the container height (no overflow crop).
-            */}
+            {/* Right: fixed-size visual container — desktop (lg+) only */}
             <div className="flex-shrink-0 relative hidden lg:block w-[600px] xl:w-[720px] h-[570px] xl:h-[620px]">
 
               {/* Ambient glow — dual layer */}
@@ -194,8 +208,8 @@ export default function HomePageClient() {
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="relative w-[720px] h-[720px] xl:w-[840px] xl:h-[840px] z-10">
                   <Image
-                    src="/3dprinter.png"
-                    alt="3D Printer"
+                    src={hero.printerImageUrl}
+                    alt={hero.printerImageAlt}
                     fill
                     className="object-contain drop-shadow-[0_24px_72px_rgba(99,102,241,0.65)]"
                     priority
@@ -206,27 +220,27 @@ export default function HomePageClient() {
 
               {/* Floating cards — positioned in the side/corner margins away from printer body */}
               <FloatingCard
-                img="/bust.png"
-                label="Custom Bust"
-                sub="High Detail"
+                img={heroCards[0].imageUrl}
+                label={heroCards[0].title}
+                sub={heroCards[0].subtitle}
                 className="absolute top-[3%] left-[0%] -rotate-3 z-20 w-[155px] h-[130px] xl:w-[168px] xl:h-[142px]"
               />
               <FloatingCard
-                img="/homedecor.png"
-                label="Home Decor"
-                sub="Unique Designs"
+                img={heroCards[1].imageUrl}
+                label={heroCards[1].title}
+                sub={heroCards[1].subtitle}
                 className="absolute top-[3%] right-[0%] rotate-3 z-20 w-[155px] h-[130px] xl:w-[168px] xl:h-[142px]"
               />
               <FloatingCard
-                img="/mechanicalpart.png"
-                label="Engineering Parts"
-                sub="Strong & Durable"
+                img={heroCards[2].imageUrl}
+                label={heroCards[2].title}
+                sub={heroCards[2].subtitle}
                 className="absolute bottom-[3%] left-[0%] rotate-2 z-20 w-[155px] h-[130px] xl:w-[168px] xl:h-[142px]"
               />
               <FloatingCard
-                img="/penholder.png"
-                label="Desk Accessories"
-                sub="Practical & Stylish"
+                img={heroCards[3].imageUrl}
+                label={heroCards[3].title}
+                sub={heroCards[3].subtitle}
                 className="absolute bottom-[3%] right-[0%] -rotate-2 z-20 w-[155px] h-[130px] xl:w-[168px] xl:h-[142px]"
               />
             </div>
@@ -236,16 +250,16 @@ export default function HomePageClient() {
               <div className="relative w-52 h-52 sm:w-64 sm:h-64">
                 <div className="absolute inset-0 bg-indigo-400/20 rounded-full blur-2xl" />
                 <Image
-                  src="/3dprinter.png"
-                  alt="3D Printer"
+                  src={hero.printerImageUrl}
+                  alt={hero.printerImageAlt}
                   fill
                   className="object-contain relative z-10 drop-shadow-2xl"
                   sizes="(max-width: 640px) 208px, 256px"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2.5 w-full max-w-xs">
-                <MiniCard img="/bust.png" label="Custom Bust" />
-                <MiniCard img="/homedecor.png" label="Home Decor" />
+                <MiniCard img={heroCards[0].imageUrl} label={heroCards[0].title} />
+                <MiniCard img={heroCards[1].imageUrl} label={heroCards[1].title} />
               </div>
             </div>
 
@@ -258,49 +272,16 @@ export default function HomePageClient() {
         <div className="max-w-6xl mx-auto">
           <div className="bg-white rounded-2xl shadow-xl border border-gray-100 px-6 py-7 sm:px-10 sm:py-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-5 sm:gap-8">
-              {[
-                {
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
-                  ),
-                  color: "bg-indigo-50 text-indigo-600",
-                  label: "Fast Delivery",
-                  sub: "Across Egypt",
-                },
-                {
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  ),
-                  color: "bg-emerald-50 text-emerald-600",
-                  label: "Quality Guaranteed",
-                  sub: "Precision printing",
-                },
-                {
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                  ),
-                  color: "bg-orange-50 text-orange-500",
-                  label: "Easy Payment",
-                  sub: "COD & InstaPay",
-                },
-                {
-                  icon: (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  ),
-                  color: "bg-purple-50 text-purple-600",
-                  label: "Custom Designs",
-                  sub: "Any size or shape",
-                },
-              ].map((b) => (
-                <div key={b.label} className="flex items-center gap-4 min-w-0">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${b.color}`}>
+              {trustBadges.map((b, i) => (
+                <div key={`${b.title}-${i}`} className="flex items-center gap-4 min-w-0">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${TRUST_BADGE_COLORS[i] ?? TRUST_BADGE_COLORS[0]}`}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                      {b.icon}
+                      {TRUST_BADGE_ICONS[i] ?? TRUST_BADGE_ICONS[0]}
                     </svg>
                   </div>
                   <div className="min-w-0">
-                    <div className="font-bold text-gray-900 text-sm leading-tight">{b.label}</div>
-                    <div className="text-gray-500 text-xs mt-0.5 leading-tight">{b.sub}</div>
+                    <div className="font-bold text-gray-900 text-sm leading-tight">{b.title}</div>
+                    <div className="text-gray-500 text-xs mt-0.5 leading-tight">{b.subtitle}</div>
                   </div>
                 </div>
               ))}
@@ -406,18 +387,18 @@ export default function HomePageClient() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold mb-3">Need a Custom 3D Print?</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold mb-3">{customCta.title}</h2>
             <p className="text-orange-100 mb-8 max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
-              Send us your design or describe what you need. Architecture models, custom gifts, dental, and mechanical parts — we handle it all.
+              {customCta.description}
             </p>
             <Link
-              href="/custom-request"
+              href={customCta.buttonHref}
               className="press inline-flex items-center gap-2 bg-white text-orange-600 font-bold px-8 py-3.5 rounded-full hover:bg-orange-50 transition-[background-color,transform] duration-200 shadow-xl text-sm sm:text-base"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
-              Submit a Request
+              {customCta.buttonText}
             </Link>
           </div>
         </section>

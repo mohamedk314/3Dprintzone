@@ -167,7 +167,7 @@ export default function AdminDashboardPage() {
   const kpis = data?.kpis;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3 justify-between">
         <div>
@@ -221,7 +221,7 @@ export default function AdminDashboardPage() {
           {/* Export orders */}
           <button
             onClick={exportOrders}
-            className="inline-flex items-center gap-1.5 text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs border border-gray-200 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors press"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -233,7 +233,7 @@ export default function AdminDashboardPage() {
           <button
             onClick={load}
             disabled={loading}
-            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 press"
           >
             <svg className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -252,7 +252,7 @@ export default function AdminDashboardPage() {
           { label: "Total Orders",    value: kpis ? kpis.totalOrders.toString() : "—", sub: "All statuses", color: "text-gray-700", bg: "bg-gray-50" },
           { label: "Avg Order Value", value: kpis ? egp(kpis.avgOrderValue)  : "—", sub: "Per non-canceled", color: "text-purple-600", bg: "bg-purple-50" },
         ].map((card) => (
-          <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4">
+          <div key={card.label} className="bg-white rounded-xl border border-gray-100 p-4 transition-colors hover:border-gray-200">
             <div className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${card.bg} mb-2`}>
               <div className={`w-2 h-2 rounded-full ${card.color.replace("text-", "bg-")}`} />
             </div>
@@ -348,16 +348,16 @@ export default function AdminDashboardPage() {
       <div className="bg-white rounded-xl border border-gray-100 p-5">
         <h2 className="font-semibold text-gray-900 text-sm mb-3">Quick Links</h2>
         <div className="flex flex-wrap gap-2">
-          <Link href="/admin/products/new" className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+          <Link href="/admin/products/new" className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors press shadow-sm">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
             </svg>
             New Product
           </Link>
-          <Link href="/admin/categories"      className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Manage Categories</Link>
-          <Link href="/admin/orders"          className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">View Orders</Link>
-          <Link href="/admin/custom-requests" className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">Custom Requests</Link>
-          <Link href="/" target="_blank" className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors">
+          <Link href="/admin/categories"      className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors press">Manage Categories</Link>
+          <Link href="/admin/orders"          className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors press">View Orders</Link>
+          <Link href="/admin/custom-requests" className="text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors press">Custom Requests</Link>
+          <Link href="/" target="_blank" className="inline-flex items-center gap-1.5 text-sm border border-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors press">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
             </svg>

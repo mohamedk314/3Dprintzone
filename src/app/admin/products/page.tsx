@@ -77,17 +77,21 @@ export default function AdminProductsPage() {
   }
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between gap-4">
+    <div className="p-4 sm:p-6 space-y-5">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-bold text-gray-900">Products</h1>
-          {meta && <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>}
+          {meta ? (
+            <p className="text-sm text-gray-500 mt-0.5">{meta.total} total</p>
+          ) : (
+            <p className="text-sm text-gray-300 mt-0.5">Loading…</p>
+          )}
         </div>
         <Link href="/admin/products/new"
-          className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0"
+          className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shrink-0 press shadow-sm"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
           </svg>
           New Product
         </Link>
@@ -128,11 +132,33 @@ export default function AdminProductsPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-400 text-sm">Loading...</div>
+          <div className="p-6 space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-12 bg-gray-50 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : products.length === 0 ? (
-          <div className="p-12 text-center">
-            <p className="text-gray-500 text-sm mb-3">{search ? "No products match your search." : "No products yet."}</p>
-            <Link href="/admin/products/new" className="text-indigo-600 text-sm hover:underline">Create your first product →</Link>
+          <div className="p-10 sm:p-14 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 mb-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">
+              {search ? "No products match your search" : "No products yet"}
+            </p>
+            <p className="text-xs text-gray-500 mb-5">
+              {search ? "Try a different keyword or clear the search." : "Add your first product to start selling."}
+            </p>
+            <Link
+              href="/admin/products/new"
+              className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors press"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Product
+            </Link>
           </div>
         ) : (
           <>

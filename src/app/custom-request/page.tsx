@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { DEFAULT_SITE_SETTINGS } from "@/lib/services/site-settings-types";
 
 type RequestType = "architecture" | "gift" | "dental" | "mechanical" | "";
 
@@ -29,6 +30,14 @@ export default function CustomRequestPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [whatsappPhone, setWhatsappPhone] = useState(DEFAULT_SITE_SETTINGS.contact.whatsappPhone);
+
+  useEffect(() => {
+    fetch("/api/storefront/site-settings")
+      .then((r) => r.json())
+      .then((d) => { if (d.success && d.data?.contact?.whatsappPhone) setWhatsappPhone(d.data.contact.whatsappPhone); })
+      .catch(() => {});
+  }, []);
 
   function setField(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -82,7 +91,7 @@ export default function CustomRequestPage() {
             Back to Home
           </Link>
           <a
-            href="https://wa.me/201012708316"
+            href={`https://wa.me/${whatsappPhone}`}
             target="_blank"
             rel="noopener noreferrer"
             className="border-2 border-green-500 text-green-600 font-bold px-6 py-2.5 rounded-full hover:bg-green-50 transition-colors"
@@ -235,7 +244,7 @@ export default function CustomRequestPage() {
 
         <p className="text-center text-xs text-gray-400">
           We typically respond within 24 hours.{" "}
-          <a href="https://wa.me/201012708316" target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
+          <a href={`https://wa.me/${whatsappPhone}`} target="_blank" rel="noopener noreferrer" className="text-green-600 hover:underline">
             WhatsApp us
           </a>{" "}
           for urgent requests.

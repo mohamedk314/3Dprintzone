@@ -140,31 +140,58 @@ export default function AdminShippingZonesPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl space-y-5">
-      {/* Header */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="flex-1">
-          <h1 className="text-xl font-bold text-gray-900">Shipping Zones</h1>
-          <p className="text-xs text-gray-500 mt-0.5">Define zones by governorate with custom pricing</p>
+    <div className="p-4 sm:p-6 max-w-5xl space-y-5">
+      {/* Header / Action bar */}
+      <div className="bg-white rounded-xl border border-gray-100 px-4 sm:px-5 py-4 flex items-center gap-3 sm:gap-4 flex-wrap shadow-[0_1px_2px_rgba(17,24,39,0.04)]">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 shrink-0">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </span>
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Shipping Zones</h1>
+          </div>
+          <p className="text-xs text-gray-500 sm:ml-10">Define zones by governorate with custom pricing.</p>
         </div>
-        <div className="flex gap-2 items-center">
-          <Link href="/admin/shipping/methods" className="text-sm text-indigo-600 hover:underline font-medium">Methods →</Link>
-          <button onClick={startNew}
-            className="bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors">
-            + New Zone
+        <div className="flex gap-2 items-center ml-auto">
+          <Link
+            href="/admin/shipping/methods"
+            className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 font-medium border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors press"
+          >
+            Methods
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+          <button
+            onClick={startNew}
+            className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors press shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
+            </svg>
+            New Shipping Zone
           </button>
         </div>
       </div>
 
       {msg && (
-        <div className={`text-sm rounded-lg px-4 py-2.5 ${msg.ok ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+        <div
+          className={`text-sm rounded-lg px-4 py-2.5 border anim-fade-slide-in ${
+            msg.ok
+              ? "bg-green-50 text-green-700 border-green-100"
+              : "bg-red-50 text-red-700 border-red-100"
+          }`}
+        >
           {msg.text}
         </div>
       )}
 
       {/* Form */}
       {showForm && (
-        <form onSubmit={handleSave} className="bg-white border border-indigo-100 rounded-xl p-5 space-y-4">
+        <form onSubmit={handleSave} className="bg-white border border-indigo-100 rounded-xl p-5 space-y-4 anim-fade-slide-in">
           <h2 className="font-semibold text-gray-900 text-sm">{editingId ? "Edit Zone" : "New Zone"}</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -232,11 +259,11 @@ export default function AdminShippingZonesPage() {
           </label>
           <div className="flex gap-3 pt-1">
             <button type="submit" disabled={saving}
-              className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+              className="bg-indigo-600 text-white text-sm font-semibold px-5 py-2 rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition-colors press">
               {saving ? "Saving..." : editingId ? "Update Zone" : "Create Zone"}
             </button>
             <button type="button" onClick={cancelForm}
-              className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+              className="text-sm text-gray-500 hover:text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors press">
               Cancel
             </button>
           </div>
@@ -246,9 +273,31 @@ export default function AdminShippingZonesPage() {
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-400">Loading...</div>
+          <div className="p-6 space-y-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-10 bg-gray-50 rounded-lg animate-pulse" />
+            ))}
+          </div>
         ) : zones.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-400">No shipping zones yet. Create one to get started.</div>
+          <div className="p-10 sm:p-12 text-center">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-500 mb-3">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p className="text-sm font-semibold text-gray-900 mb-1">No shipping zones yet</p>
+            <p className="text-xs text-gray-500 mb-4">Group governorates into zones with their own pricing.</p>
+            <button
+              onClick={startNew}
+              className="inline-flex items-center gap-1.5 bg-indigo-600 text-white text-sm font-semibold px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors press"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Shipping Zone
+            </button>
+          </div>
         ) : (
           <table className="w-full text-sm">
             <thead>

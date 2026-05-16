@@ -154,7 +154,7 @@ export default function AdminOrderDetailPage() {
 
   if (loading) {
     return (
-      <div className="p-6 animate-pulse space-y-4 max-w-4xl">
+      <div className="p-4 sm:p-6 animate-pulse space-y-4 max-w-4xl">
         <div className="h-6 bg-gray-200 rounded w-48" />
         <div className="grid grid-cols-2 gap-4">
           {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-32 bg-white rounded-xl border border-gray-100" />)}
@@ -192,7 +192,7 @@ export default function AdminOrderDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 max-w-4xl">
+    <div className="p-4 sm:p-6 space-y-5 max-w-4xl">
       {/* Header */}
       <div className="flex items-center gap-3 flex-wrap">
         <Link href="/admin/orders" className="text-gray-400 hover:text-gray-600">
