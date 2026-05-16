@@ -88,6 +88,89 @@ This document is the canonical handover. It's written for two audiences:
 | Validation | Zod |
 | Hosting target | **Railway** (Node) or any Node host; works on Vercel for the app but **needs a separate MySQL DB** |
 
+### Detected project versions
+
+These are the **exact versions installed** in the verified production build. Detected with `node --version`, `npm --version`, and `npm list ... --depth=0` against the current `package-lock.json`. Do not assume newer versions are safe without re-running `npm run typecheck && npm run build`.
+
+**Runtime**
+
+| Tool | Version | Notes |
+| --- | --- | --- |
+| Node.js | 20.20.0 | **Production hosting must use Node.js ≥ 20** — required by Next.js 16. `package.json` declares `engines.node: ">=20.0.0"` so Railway / Nixpacks / Vercel will pick a compatible runtime automatically. |
+| npm | 10.8.2 | Bundled with Node 20. |
+| Database engine | **MySQL** (any 8.x compatible; provider-agnostic) | Connection driven by `DATABASE_URL`. The Prisma datasource provider is `mysql` in `prisma/schema.prisma`. The schema works on MySQL 8 and any wire-compatible host (PlanetScale, Aiven, Railway MySQL plugin). |
+
+**Framework / language / build**
+
+| Package | Version | Type |
+| --- | --- | --- |
+| `next` | 16.2.6 | Direct dependency. **Current verified production build was tested on this version.** |
+| `react` | 19.2.3 | Direct dependency, exact pin |
+| `react-dom` | 19.2.3 | Direct dependency, exact pin |
+| `typescript` | 5.9.3 | Direct dev dependency |
+| `eslint` | 9.39.4 | Direct dev dependency |
+| `eslint-config-next` | 16.1.6 | Direct dev dependency (note: shipped against Next 16.1 — kept as-is because it still resolves cleanly against Next 16.2.6 and the build passes) |
+| `tailwindcss` | 4.2.1 | Direct dev dependency |
+| `@tailwindcss/postcss` | 4.2.1 | Direct dev dependency |
+| `postcss` | 8.5.14 (direct, via `@tailwindcss/postcss`) **and** 8.4.31 (nested inside `next`) | The direct `postcss` is on the patched version. A separate nested copy still lives under `node_modules/next/node_modules/postcss` — see the [Known dependency audit notes](#known-dependency-audit-notes) below. |
+
+**Database / ORM**
+
+| Package | Version | Notes |
+| --- | --- | --- |
+| `prisma` (CLI) | 6.19.3 | Direct dev dependency. Pulled in by the safe `npm audit fix` that closed an upstream `effect` advisory. |
+| `@prisma/client` | 6.19.2 | Direct dependency. The CLI being one patch ahead of the client is intentional and benign; Prisma supports minor mismatches inside the same major. The client will be re-aligned the next time `npm install` runs against an updated `^6.19.2` range, or sooner if you run `npm install @prisma/client@latest`. |
+
+**Production integrations**
+
+| Package | Version | Used for |
+| --- | --- | --- |
+| `nodemailer` | 8.0.7 | Transactional email (admin OTP + customer notifications) — see `src/lib/email/nodemailer.ts` |
+| `@aws-sdk/client-s3` | 3.1009.0 | Cloudflare R2 uploads (S3-compatible API) — see `src/lib/services/r2.ts` |
+| `@aws-sdk/s3-request-presigner` | 3.1009.0 | R2 presigned upload URLs — see `src/app/api/uploads/r2/presign/route.ts` |
+| `jsonwebtoken` | 9.0.3 | Signing/verifying admin JWT session tokens — `src/lib/auth/jwt.ts`, `src/proxy.ts` |
+| `bcryptjs` | 3.0.3 | Hashing admin OTP codes + session tokens before storing them — `src/lib/auth/hash.ts` |
+| `zod` | 4.3.6 | Request validation in API routes |
+| `jspdf` | 4.2.1 | Order/invoice PDF generation in admin |
+| `clsx` | 2.1.1 | Conditional className helper |
+
+**Paymob / payments**
+
+The Paymob integration does **not** use a vendor SDK. It is implemented directly against the Paymob HTTP API and HMAC webhook signature using Node's built-in `crypto` module — see `src/lib/services/paymob/client.ts`. No additional payment package is installed.
+
+### Build verification on these versions
+
+After bumping `next` to 16.2.6 and applying the safe `npm audit fix`:
+
+- `npm run typecheck` → exit 0 (clean — no TypeScript errors)
+- `npm run build` → exit 0 (all routes compile, proxy middleware bundled)
+- `npm audit` → 2 moderate vulnerabilities, both from a single nested `postcss@8.4.31` under `node_modules/next/node_modules/postcss`
+
+### Known dependency audit notes
+
+`npm audit` currently reports **2 moderate** vulnerabilities. Both come from a single nested copy of `postcss@8.4.31` that ships inside `next@16.2.6` itself — not a direct dependency of this project. The advisory is [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93): PostCSS XSS via unescaped `</style>` in its stringify output.
+
+**Why we are not "fixing" it:**
+
+- `npm audit fix --force` would resolve the warning by **downgrading Next.js from 16.2.6 to 9.3.3** — a breaking change of 7 major versions, which would destroy the application. This is not acceptable.
+- The vulnerable `postcss` is bundled inside Next.js's own compiler pipeline. It is reachable only at build time when CSS is stringified, not at runtime when serving HTTP requests. There is no user input flowing into PostCSS's stringifier in this project.
+- The direct (non-nested) `postcss` used by Tailwind is already on 8.5.14, the patched version.
+- The fix has to come from upstream — Next.js needs to ship a release that bumps its internal `postcss` to ≥ 8.5.10. **Monitor future Next.js releases** and pick up the patch when it lands.
+
+**Action plan:**
+
+1. Periodically run `npm audit` and `npm outdated` (e.g., once a month).
+2. When a new `next@16.2.x` patch is published, run:
+   ```bash
+   npm install next@latest
+   npm run typecheck
+   npm run build
+   npm audit
+   ```
+3. If the audit comes back clean (or to a known new issue), commit the bump.
+
+In the meantime, the remaining 2 moderate items in `npm audit` are expected and do not affect production. Earlier 11 of 13 vulnerabilities were fixed by a safe `npm audit fix` (no `--force`), and the Next.js minor bump from 16.1.6 → 16.2.6 closed ~18 high-severity advisories applicable to this stack (proxy bypass, RSC DoS, SSRF, image-optimization DoS, RSC cache poisoning, etc.).
+
 ---
 
 ## C. Folder structure
@@ -406,27 +489,7 @@ Major upgrades to **Next.js**, **React**, or **Prisma** should be done on a feat
 
 ### Known dependency audit notes
 
-`npm audit` currently reports **2 moderate** vulnerabilities. Both come from a single nested copy of `postcss` (<8.5.10) that ships inside `next@16.2.6` itself — not a direct dependency of this project. The advisory is [GHSA-qx2v-qp2m-jg93](https://github.com/advisories/GHSA-qx2v-qp2m-jg93): PostCSS XSS via unescaped `</style>` in its stringify output.
-
-**Why we are not "fixing" it:**
-
-- `npm audit fix --force` would resolve the warning by **downgrading Next.js from 16.2.6 to 9.3.3** — a breaking change of 7 major versions, which would destroy the application. This is not acceptable.
-- The vulnerable `postcss` is bundled inside Next.js's own compiler pipeline. It is reachable only at build time when CSS is stringified, not at runtime when serving HTTP requests. There is no user input flowing into PostCSS's stringifier in this project.
-- The fix has to come from upstream — Next.js needs to ship a release that bumps its internal `postcss` to ≥ 8.5.10. We are tracking the issue and will pick it up when a patched Next.js minor or patch release lands.
-
-**Action plan:**
-
-1. Periodically run `npm audit` and `npm outdated` (e.g., once a month).
-2. When a new `next@16.2.x` patch is published, run:
-   ```bash
-   npm install next@latest
-   npm run typecheck
-   npm run build
-   npm audit
-   ```
-3. If audit comes back clean (or to a known new issue), commit the bump.
-
-In the meantime, the remaining 2 moderate items in `npm audit` are expected and do not affect production. Earlier 11 of 13 vulnerabilities were fixed by a safe `npm audit fix` (no `--force`), and the Next.js minor bump from 16.1.6 → 16.2.6 closed ~18 high-severity advisories applicable to this stack (proxy bypass, RSC DoS, SSRF, image-optimization DoS, RSC cache poisoning, etc.).
+See [Known dependency audit notes](#known-dependency-audit-notes) in section B. Short version: 2 remaining moderate items in `npm audit` are caused by a nested `postcss` inside Next.js itself and **cannot be auto-fixed without breaking the app** (the suggested "fix" downgrades Next.js 7 majors). Monitor future Next.js releases and re-run `npm audit` after each `npm install next@latest`.
 
 ### Backing up the database
 
