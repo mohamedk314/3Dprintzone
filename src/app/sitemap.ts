@@ -1,22 +1,31 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db/prisma";
+import { getSiteUrl } from "@/lib/seo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "https://3dprintzone.com";
+  const base = getSiteUrl();
 
-  const [products, categories] = await Promise.all([
-    prisma.product.findMany({
-      where: { isActive: true },
-      select: { slug: true, brand: true, updatedAt: true },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      select: { slug: true, brand: true, updatedAt: true },
-    }),
-  ]);
+  // Only active (public) products and categories are listed. New products
+  // added from the admin appear here automatically; deactivated ones drop out.
+  let products: { slug: string; brand: string; updatedAt: Date }[] = [];
+  let categories: { slug: string; brand: string; updatedAt: Date }[] = [];
+  try {
+    [products, categories] = await Promise.all([
+      prisma.product.findMany({
+        where: { isActive: true },
+        select: { slug: true, brand: true, updatedAt: true },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        select: { slug: true, brand: true, updatedAt: true },
+      }),
+    ]);
+  } catch {
+    // If the DB is unreachable, still serve the static pages instead of a 500.
+  }
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, lastModified: new Date(), changeFrequency: "daily", priority: 1 },

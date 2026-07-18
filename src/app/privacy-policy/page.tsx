@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { readSiteSettings } from "@/lib/services/site-settings";
+import { pageMetadata } from "@/lib/seo";
 import LegalArticle from "@/components/legal/LegalArticle";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +10,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const { legalPages } = await readSiteSettings();
   const page = legalPages["privacy-policy"];
-  return {
+  return pageMetadata({
     title: page.metaTitle,
     description: page.metaDescription,
-  };
+    canonical: "/privacy-policy",
+  });
 }
 
 export default async function PrivacyPolicyPage() {

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { readSiteSettings } from "@/lib/services/site-settings";
+import { pageMetadata } from "@/lib/seo";
 import RaykLegalArticle from "@/components/legal/RaykLegalArticle";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +10,11 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await readSiteSettings();
   const page = settings.rayk.legalPages["terms"];
-  return {
+  return pageMetadata({
     title: page.metaTitle,
     description: page.metaDescription,
-  };
+    canonical: "/rayk/terms", siteName: "RAYK",
+  });
 }
 
 export default async function RaykTermsPage() {

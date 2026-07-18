@@ -4,6 +4,7 @@ import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 import { toSlug } from "@/lib/utils/slug";
 import { ProductType } from "@prisma/client";
 import { deleteR2Objects } from "@/lib/services/r2";
+import { PRODUCT_SEO_LIMITS, normalizeSeoField } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +19,9 @@ const productSelect = {
   shortDescription: true,
   description: true,
   sku: true,
+  seoTitle: true,
+  seoDescription: true,
+  seoKeywords: true,
   price: true,
   compareAtPrice: true,
   stockQty: true,
@@ -132,6 +136,21 @@ export async function PATCH(
         }
       }
       updateData.sku = body.sku ?? null;
+    }
+
+    const seoLimits = {
+      seoTitle: PRODUCT_SEO_LIMITS.title,
+      seoDescription: PRODUCT_SEO_LIMITS.description,
+      seoKeywords: PRODUCT_SEO_LIMITS.keywords,
+    } as const;
+    for (const [field, max] of Object.entries(seoLimits)) {
+      if (body[field] !== undefined) {
+        const result = normalizeSeoField(body[field], max);
+        if (result && typeof result === "object") {
+          return NextResponse.json({ success: false, message: `${field} ${result.error}` }, { status: 400 });
+        }
+        updateData[field] = result;
+      }
     }
 
     if (body.shortDescription !== undefined) updateData.shortDescription = body.shortDescription ?? null;

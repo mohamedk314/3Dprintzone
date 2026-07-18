@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { requireAuthenticatedAdmin } from "@/lib/auth/admin-session";
 import { toSlug } from "@/lib/utils/slug";
 import { ProductType } from "@prisma/client";
+import { PRODUCT_SEO_LIMITS, normalizeSeoField } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -84,6 +85,9 @@ export async function POST(req: NextRequest) {
       shortDescription,
       description,
       sku,
+      seoTitle,
+      seoDescription,
+      seoKeywords,
       price,
       compareAtPrice,
       stockQty = 0,
@@ -109,6 +113,17 @@ export async function POST(req: NextRequest) {
         { success: false, message: `productType must be one of: ${PRODUCT_TYPES.join(", ")}` },
         { status: 400 }
       );
+    }
+
+    const seoFields = {
+      seoTitle: normalizeSeoField(seoTitle, PRODUCT_SEO_LIMITS.title),
+      seoDescription: normalizeSeoField(seoDescription, PRODUCT_SEO_LIMITS.description),
+      seoKeywords: normalizeSeoField(seoKeywords, PRODUCT_SEO_LIMITS.keywords),
+    };
+    for (const [field, result] of Object.entries(seoFields)) {
+      if (result && typeof result === "object") {
+        return NextResponse.json({ success: false, message: `${field} ${result.error}` }, { status: 400 });
+      }
     }
 
     const category = await prisma.category.findUnique({ where: { id: categoryId } });
@@ -140,6 +155,9 @@ export async function POST(req: NextRequest) {
         shortDescription: shortDescription ?? null,
         description: description ?? null,
         sku: sku ?? null,
+        seoTitle: seoFields.seoTitle as string | null,
+        seoDescription: seoFields.seoDescription as string | null,
+        seoKeywords: seoFields.seoKeywords as string | null,
         price: Number(price),
         compareAtPrice: compareAtPrice != null ? Number(compareAtPrice) : null,
         stockQty: Number(stockQty),

@@ -1,21 +1,42 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { readSiteSettings } from "@/lib/services/site-settings";
+import { absoluteUrl, jsonLdString, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { contactPage } = await readSiteSettings();
-  return {
+  return pageMetadata({
     title: contactPage.metaTitle,
     description: contactPage.metaDescription,
-  };
+    canonical: "/contact",
+  });
 }
 
 export default async function ContactPage() {
   const settings = await readSiteSettings();
   const c = settings.contact;
   const page = settings.contactPage;
+
+  // Only data already displayed publicly on this page goes into the schema.
+  const contactJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: page.metaTitle,
+    description: page.metaDescription,
+    url: absoluteUrl("/contact"),
+    about: {
+      "@type": "Organization",
+      "@id": `${absoluteUrl("/")}#organization`,
+      name: "3Dprintzone",
+      url: absoluteUrl("/"),
+      email: c.email,
+      telephone: c.phone,
+      address: c.address ? { "@type": "PostalAddress", streetAddress: c.address, addressCountry: "EG" } : undefined,
+      sameAs: [c.instagramUrl].filter(Boolean),
+    },
+  };
 
   const channels = [
     c.phone && {
@@ -67,6 +88,10 @@ export default async function ContactPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(contactJsonLd) }}
+      />
       <nav className="text-xs text-gray-400 mb-4 flex items-center gap-1.5">
         <Link href="/" className="hover:text-gray-600 transition-colors">Home</Link>
         <span>/</span>

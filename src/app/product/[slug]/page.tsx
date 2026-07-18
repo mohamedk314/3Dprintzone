@@ -1,5 +1,16 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import { prisma } from "@/lib/db/prisma";
+import {
+  BRAND_KEYWORD_THEMES,
+  absoluteUrl,
+  breadcrumbJsonLd,
+  jsonLdString,
+  productImageAlt,
+  productSeoDescription,
+  productSeoKeywords,
+  productSeoTitle,
+} from "@/lib/seo";
 import ProductDetailPageClient from "./_client";
 
 export const runtime = "nodejs";
@@ -7,69 +18,85 @@ export const dynamic = "force-dynamic";
 
 type Params = { params: Promise<{ slug: string }> };
 
-export async function generateMetadata({ params }: Params): Promise<Metadata> {
-  const { slug } = await params;
-  const product = await prisma.product.findFirst({
+// cache() dedupes the query between generateMetadata and the page render.
+const getProduct = cache(async (slug: string) =>
+  prisma.product.findFirst({
     where: { slug, isActive: true },
     select: {
       name: true,
       shortDescription: true,
       description: true,
+      seoTitle: true,
+      seoDescription: true,
+      seoKeywords: true,
+      sku: true,
+      price: true,
+      stockQty: true,
+      productType: true,
+      category: { select: { name: true, slug: true } },
       images: {
         orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
-        select: { imageUrl: true },
-        take: 1,
+        select: { imageUrl: true, altText: true },
+        take: 4,
       },
     },
-  });
+  })
+);
 
-  if (!product) return { title: "Product Not Found" };
+export async function generateMetadata({ params }: Params): Promise<Metadata> {
+  const { slug } = await params;
+  const product = await getProduct(slug);
 
-  const desc = product.shortDescription ?? (product.description ? product.description.slice(0, 155) : `Buy ${product.name} at 3Dprintzone. Quality 3D printed products delivered across Egypt.`);
-  const image = product.images[0]?.imageUrl;
+  if (!product) return { title: "Product Not Found", robots: { index: false } };
+
+  const seoSource = { ...product, categoryName: product.category?.name };
+  const title = productSeoTitle(seoSource);
+  const desc = productSeoDescription(seoSource, "3Dprintzone");
+  const image = product.images[0];
+  const canonical = `/product/${slug}`;
 
   return {
-    title: product.name,
+    title,
     description: desc,
+    keywords: productSeoKeywords(seoSource, BRAND_KEYWORD_THEMES["3dprintzone"]),
+    alternates: { canonical },
     openGraph: {
-      title: product.name,
+      title,
       description: desc,
       type: "website",
-      images: image ? [image] : undefined,
+      url: canonical,
+      images: image
+        ? [{ url: image.imageUrl, alt: productImageAlt(product.name, image.altText) }]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: desc,
+      images: image ? [image.imageUrl] : undefined,
     },
   };
 }
 
 export default async function ProductPage({ params }: Params) {
   const { slug } = await params;
-  const product = await prisma.product.findFirst({
-    where: { slug, isActive: true },
-    select: {
-      name: true,
-      shortDescription: true,
-      description: true,
-      price: true,
-      stockQty: true,
-      productType: true,
-      images: {
-        orderBy: [{ isPrimary: "desc" }, { sortOrder: "asc" }],
-        select: { imageUrl: true },
-        take: 1,
-      },
-    },
-  });
+  const product = await getProduct(slug);
 
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? "";
-  const desc = product?.shortDescription ?? (product?.description ? product.description.slice(0, 155) : undefined);
-  const image = product?.images[0]?.imageUrl;
+  const url = absoluteUrl(`/product/${slug}`);
 
-  const jsonLd = product
+  const productJsonLd = product
     ? {
         "@context": "https://schema.org",
         "@type": "Product",
         name: product.name,
-        description: desc,
-        image,
+        description: productSeoDescription(
+          { ...product, categoryName: product.category?.name },
+          "3Dprintzone"
+        ),
+        image: product.images.map((img) => absoluteUrl(img.imageUrl)),
+        sku: product.sku ?? undefined,
+        category: product.category?.name,
+        url,
         brand: { "@type": "Brand", name: "3Dprintzone" },
         offers: {
           "@type": "Offer",
@@ -79,17 +106,34 @@ export default async function ProductPage({ params }: Params) {
             product.productType === "physical" && product.stockQty === 0
               ? "https://schema.org/OutOfStock"
               : "https://schema.org/InStock",
-          url: `${base}/product/${slug}`,
+          url,
         },
       }
     : null;
 
+  const breadcrumbs = product
+    ? breadcrumbJsonLd([
+        { name: "Home", path: "/" },
+        { name: "Shop", path: "/shop" },
+        ...(product.category
+          ? [{ name: product.category.name, path: `/category/${product.category.slug}` }]
+          : []),
+        { name: product.name, path: `/product/${slug}` },
+      ])
+    : null;
+
   return (
     <>
-      {jsonLd && (
+      {productJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: jsonLdString(productJsonLd) }}
+        />
+      )}
+      {breadcrumbs && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLdString(breadcrumbs) }}
         />
       )}
       <ProductDetailPageClient />

@@ -77,7 +77,7 @@ This document is the canonical handover. It's written for two audiences:
 | --- | --- |
 | Framework | **Next.js 16** (App Router, React 19) |
 | Language | TypeScript (strict) |
-| Database | **MySQL** via **Prisma 6** ORM |
+| Database | **PostgreSQL** via **Prisma 6** ORM |
 | Styling | **Tailwind CSS v4** (PostCSS plugin), custom design tokens in `globals.css` |
 | Auth (admin) | Email OTP → JWT cookie, verified by `src/proxy.ts` (Next.js middleware) |
 | Auth (customer) | Email OTP |
@@ -86,7 +86,7 @@ This document is the canonical handover. It's written for two audiences:
 | File storage | Cloudflare R2 (S3-compatible) for product images |
 | PDF generation | jsPDF (invoices) |
 | Validation | Zod |
-| Hosting target | **Railway** (Node) or any Node host; works on Vercel for the app but **needs a separate MySQL DB** |
+| Hosting target | **Vercel** (app) + a **Vercel Marketplace PostgreSQL** database (Neon / Prisma Postgres / Supabase); any Node host with a reachable PostgreSQL also works |
 
 ### Detected project versions
 
@@ -98,7 +98,7 @@ These are the **exact versions installed** in the verified production build. Det
 | --- | --- | --- |
 | Node.js | 20.20.0 | **Production hosting must use Node.js ≥ 20** — required by Next.js 16. `package.json` declares `engines.node: ">=20.0.0"` so Railway / Nixpacks / Vercel will pick a compatible runtime automatically. |
 | npm | 10.8.2 | Bundled with Node 20. |
-| Database engine | **MySQL** (any 8.x compatible; provider-agnostic) | Connection driven by `DATABASE_URL`. The Prisma datasource provider is `mysql` in `prisma/schema.prisma`. The schema works on MySQL 8 and any wire-compatible host (PlanetScale, Aiven, Railway MySQL plugin). |
+| Database engine | **PostgreSQL** (14+; provider-agnostic) | Connection driven by `DATABASE_URL` (must start with `postgresql://`). The Prisma datasource provider is `postgresql` in `prisma/schema.prisma`. Works with any managed Postgres — Neon, Prisma Postgres, Supabase (all on the Vercel Marketplace), or a self-hosted instance. |
 
 **Framework / language / build**
 
@@ -179,7 +179,8 @@ In the meantime, the remaining 2 moderate items in `npm audit` are expected and 
 3dprintzone/
 ├── prisma/
 │   ├── schema.prisma            # DB schema (source of truth)
-│   └── migrations/              # 12 timestamped migrations
+│   ├── migrations/              # PostgreSQL migrations (baseline: init_postgres_schema)
+│   └── migrations_mysql_archive/ # Old MySQL migration history (reference only — do not run)
 ├── public/                      # Static assets (logos, hero, brand imagery)
 │   ├── brands/rayk-logo.png
 │   ├── rayk/                    # RAYK hero + product visuals
@@ -240,7 +241,7 @@ All variables are read in `src/lib/utils/env.ts`. Required vars throw an error a
 
 | Variable | Required | Example | Description | Local vs Production |
 | --- | --- | --- | --- | --- |
-| `DATABASE_URL` | ✅ | `mysql://root:password@127.0.0.1:3306/3dprintzone` | MySQL connection string used by Prisma | Local: your local MySQL. Production: managed MySQL connection string |
+| `DATABASE_URL` | ✅ | `postgresql://postgres:password@127.0.0.1:5432/3dprintzone` | PostgreSQL connection string used by Prisma. **Must start with `postgresql://`** | Local: your local Postgres (or a dev branch of your managed DB). Production: the Neon / Prisma Postgres connection string (keep `sslmode=require`) |
 | `NEXT_PUBLIC_APP_URL` | ✅ | `https://3dprintzone.com` | Public site URL. Used by metadata, sitemap, robots, Open Graph. **No trailing slash.** | Local: `http://localhost:3000`. Production: your real domain |
 | `JWT_SECRET` | ✅ | 96-char hex string | Signs admin session JWTs. Generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` | Different per environment. Never share between local and prod |
 | `ADMIN_EMAIL` | ⚪ optional | `admin@yourdomain.com` | Optional default admin email (UI label) | Same in both |
@@ -275,7 +276,7 @@ All variables are read in `src/lib/utils/env.ts`. Required vars throw an error a
 
 - Node.js 20+ (LTS recommended)
 - npm 10+ (ships with Node)
-- A local MySQL 8 server, or Docker with MySQL
+- A local PostgreSQL 14+ server, Docker with Postgres, or a free dev database from Neon / Prisma Postgres
 
 ### 2. Clone and install
 
@@ -295,7 +296,7 @@ cp .env.example .env.local
 
 Edit `.env.local` and fill in real values. At minimum you need:
 
-- `DATABASE_URL` pointing to a reachable MySQL
+- `DATABASE_URL` pointing to a reachable PostgreSQL (`postgresql://...`)
 - `JWT_SECRET` (generate one: `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"`)
 - `SMTP_*` (Gmail App Password works for testing)
 - `SMTP_FROM`
@@ -305,8 +306,9 @@ Edit `.env.local` and fill in real values. At minimum you need:
 ### 4. Create the database and run migrations
 
 ```bash
-# Make sure MySQL is running and the DB exists. Example:
-#   mysql -uroot -p -e "CREATE DATABASE 3dprintzone CHARACTER SET utf8mb4;"
+# Make sure PostgreSQL is running and the DB exists. Example:
+#   psql -U postgres -c 'CREATE DATABASE "3dprintzone";'
+# (Neon / Prisma Postgres databases already exist — skip creation.)
 
 npm run db:migrate:dev
 ```
@@ -329,8 +331,8 @@ Open <http://localhost:3000>.
 4. Check your inbox (or spam) for a 6-digit code from `SMTP_FROM`.
 5. Enter it on the verification screen → you're in.
 
-> No SMTP set up? In development you can also read the latest OTP directly from MySQL:
-> `SELECT * FROM AdminOtpCode ORDER BY createdAt DESC LIMIT 1;` — but the value stored is **hashed**, so this only confirms a request was made. For real testing, configure SMTP.
+> No SMTP set up? In development you can also read the latest OTP directly from PostgreSQL:
+> `SELECT * FROM "AdminOtpCode" ORDER BY "createdAt" DESC LIMIT 1;` — but the value stored is **hashed**, so this only confirms a request was made. For real testing, configure SMTP.
 
 ### Useful npm scripts
 
@@ -350,32 +352,29 @@ Open <http://localhost:3000>.
 
 ## F. Production hosting guide
 
-The recommended host is **Railway** (Node service + managed MySQL plugin), but any Node host that supports `npm install` + `npm run build` + `npm run start` works.
+The recommended setup is **Vercel** for the app plus a **PostgreSQL database from the Vercel Marketplace** — Neon, Prisma Postgres, or Supabase Postgres. Any Node host with a reachable PostgreSQL also works.
 
-### Railway (recommended)
+> **The project uses PostgreSQL.** `DATABASE_URL` must start with `postgresql://`. A `mysql://` URL will fail at startup with a Prisma provider mismatch error.
 
-1. **Create a project**, add the GitHub repo.
-2. **Add a MySQL plugin** to the project. Railway gives you a `DATABASE_URL` automatically.
-3. In the **Service → Variables** tab, set every required env var from the table above. For `DATABASE_URL`, click "Reference" → MySQL plugin → `DATABASE_URL` so Railway wires it for you.
-4. Build command: leave default (`npm install && npm run build`). The `postinstall` step runs `prisma generate` automatically.
-5. Start command: `npm run start` (this script already includes `-p ${PORT:-3000}` so Railway's dynamic `$PORT` is honored).
-6. **First deploy** — once it builds, open a one-off shell:
+### Vercel + Marketplace PostgreSQL (recommended)
+
+1. **Import the repo** into Vercel (Add New → Project → your GitHub repo). Framework preset: Next.js — defaults are fine; `postinstall` runs `prisma generate` automatically.
+2. **Provision a database**: Vercel Dashboard → **Storage** (or **Marketplace**) → create a **Neon** or **Prisma Postgres** database and **connect it to the project**. This injects `DATABASE_URL` (a `postgresql://...` string) into the project's environment variables automatically for Production/Preview/Development.
+   - If you provision the database outside Vercel instead, copy its connection string and add it manually: **Project → Settings → Environment Variables → `DATABASE_URL`**, applied to **Production and Preview**. Keep `sslmode=require`.
+3. **Set the remaining env vars** from the table above (`JWT_SECRET`, `SMTP_*`, `NEXT_PUBLIC_APP_URL`, optionally R2/Paymob) in **Project → Settings → Environment Variables**.
+4. **Run migrations against the production database** from your local machine (Vercel builds should not mutate the schema):
    ```bash
-   npm run db:migrate:deploy
+   DATABASE_URL="postgresql://prod-connection-string" npx prisma migrate deploy
    ```
-   This applies migrations to the production DB. **Do not** run `prisma migrate reset` or `prisma db push` in production.
-7. **Custom domain** — in Railway → Service → Settings → Networking, add your domain. Set the same domain (with `https://`) as `NEXT_PUBLIC_APP_URL`.
-8. Railway auto-provisions an SSL certificate via Let's Encrypt. HTTPS is enforced automatically.
+   **Do not** run `prisma migrate reset` or `prisma db push` in production.
+5. **Redeploy** — env-var changes only take effect on the next deployment (Deployments → ⋯ → Redeploy, or push a commit).
+6. **Verify**: `/` renders the storefront, `/api/storefront/products` returns JSON, `/admin/login` sends an OTP, `/sitemap.xml` + `/robots.txt` + `/llms.txt` respond.
 
-### Vercel (alternative)
+Vercel doesn't expose `$PORT`; the start script's `${PORT:-3000}` fallback is ignored there, which is fine.
 
-Vercel can host the app, but you'll need a separate MySQL database (PlanetScale, Neon's MySQL, Aiven, Railway's MySQL with public networking). Set the same variables in **Project Settings → Environment Variables**. Vercel doesn't expose `$PORT`; the script's `${PORT:-3000}` falls back to 3000, which Vercel ignores anyway.
+### Railway / other Node hosts (alternative)
 
-After the first deploy, run migrations against the production database from your local machine:
-
-```bash
-DATABASE_URL="mysql://prod-connection-string" npx prisma migrate deploy
-```
+Works the same as before, but attach a **PostgreSQL** plugin/instance instead of MySQL, reference its `DATABASE_URL`, build with `npm install && npm run build`, start with `npm run start`, and run `npm run db:migrate:deploy` once from a one-off shell.
 
 ### Build/start commands summary
 
@@ -542,41 +541,135 @@ This release adds polished empty and loading states across:
 
 ---
 
-## H. SEO handover
+## H. SEO & GEO (AI search) handover
 
-### What's already implemented
+### How metadata is generated
 
-- ✅ **Server-rendered metadata** for every page (`title`, `description`) defined in `src/app/layout.tsx` and per-route `metadata` exports.
-- ✅ **Title template:** `"<page title> | 3Dprintzone"`. Set in `layout.tsx`.
-- ✅ **Open Graph tags:** `siteName`, `locale: en_EG`, `type: website`. Add product-specific OG images in admin if/when desired.
-- ✅ **Dynamic sitemap** at `/sitemap.xml` — auto-includes all active products and categories from the database, plus static pages.
-- ✅ **robots.txt** at `/robots.txt` — allows all crawlers, disallows `/admin`, `/api`, `/account`, `/track-order`. Points to the sitemap.
-- ✅ **Organization JSON-LD** structured data injected on every page (name, URL, address: Cairo, EG).
-- ✅ **Canonical URL base** — driven by `NEXT_PUBLIC_APP_URL`, so changing your domain automatically updates everywhere.
-- ✅ **Favicon** at `/icon.png` (and `/rayk/icon.png` for the RAYK brand).
-- ✅ **Image optimization** via `next/image` with remote-pattern allowlist in `next.config.ts`.
+All SEO helpers live in **`src/lib/seo.ts`** (site URL resolution, fallback
+generators, JSON-LD builders, validation limits). The canonical site URL is
+resolved from `NEXT_PUBLIC_SITE_URL` → `NEXT_PUBLIC_APP_URL` → localhost
+(dev only), so changing the production domain is a single env-var change.
 
-### What the owner should update after buying the final domain
+- ✅ **Global metadata** (`src/app/layout.tsx`): title template
+  `"<page> | 3Dprintzone"`, default description, Open Graph defaults
+  (`siteName`, `locale: en_EG`, `type: website`), Twitter
+  `summary_large_image` defaults, `metadataBase` for canonical URLs.
+- ✅ **Canonical URLs** on every public page (`alternates.canonical`).
+  RAYK pages canonicalize to `/rayk/...`, never to 3dprintzone paths.
+- ✅ **Homepage** reads its title/description/OG image from the admin-editable
+  **3dprintzone → Homepage SEO** settings; RAYK homepage reads **RAYK → SEO**.
+- ✅ **Noindex** on private pages: `/cart`, `/checkout`, `/wishlist`,
+  `/account`, `/track-order` and their `/rayk/*` equivalents (via per-route
+  `layout.tsx` files + robots.txt disallow).
 
-1. **Set `NEXT_PUBLIC_APP_URL`** in the hosting dashboard to `https://your-final-domain.com` (no trailing slash), then redeploy.
-2. Visit `https://your-final-domain.com/sitemap.xml` to confirm it lists every product and category.
-3. Visit `https://your-final-domain.com/robots.txt` to confirm the sitemap line points to your new domain.
+### Product & category SEO (automatic + editable)
+
+Every product page (`/product/[slug]`, `/rayk/product/[slug]`) generates its
+metadata from the database at request time — **new products become searchable
+automatically** with no code changes:
+
+- **SEO title / description / keywords** are editable per product in the
+  admin product form ("Search & AI Discoverability" section). When left
+  blank, fallbacks are generated: product name → title; short description →
+  full description → generated sentence for the description; name + category
+  + brand themes for keywords. Limits are validated server-side
+  (`PRODUCT_SEO_LIMITS` in `src/lib/seo.ts`).
+- **OG/Twitter image** comes from the product's primary image; alt text
+  uses the image's stored alt (editable in the admin Image Manager).
+- **Product JSON-LD** (name, description, images, SKU, category, brand,
+  EGP offer with real availability) + **BreadcrumbList JSON-LD**.
+  No ratings/reviews are emitted unless real ones exist.
+- **Renaming a product changes its slug/URL** — the admin form warns about
+  this because old indexed links stop working.
+
+Category pages (`/category/[slug]`, `/rayk/category/[slug]`) get canonical +
+OG (with category image) + Twitter metadata and CollectionPage +
+BreadcrumbList JSON-LD from category data.
+
+### Legal & contact pages
+
+Meta titles/descriptions for all legal pages and contact pages are editable
+per brand in `/admin/settings` (SUPER_ADMIN only). Each page has a canonical
+URL, OG/Twitter tags, and the contact pages emit ContactPage/Organization
+JSON-LD using only the contact data already shown publicly on the page.
+
+### Structured data summary
+
+| Schema | Where |
+|---|---|
+| Organization (+ WebSite) | every page (root layout), from settings contact info |
+| Organization (RAYK) | every `/rayk` page, from RAYK contact overrides |
+| WebPage | homepage, RAYK homepage |
+| Product + BreadcrumbList | product pages (both brands) |
+| CollectionPage + BreadcrumbList | category pages (both brands) |
+| ContactPage | `/contact`, `/rayk/contact` |
+| FAQPage | homepage (matches the visible FAQ section) |
+| Service | `/custom-request` |
+
+### GEO — AI search optimization
+
+- **`/llms.txt`** (route: `src/app/llms.txt/route.ts`) — an AI-readable
+  summary of both brands, services, payment/delivery facts, and all
+  important public URLs. No admin or private URLs.
+- **Server-rendered answer content on the homepage** — a "3D Printing in
+  Egypt, Made Simple" section with FAQ-style Q&A (what we sell, how ordering
+  works, delivery, custom prints) that AI crawlers can quote, since the rest
+  of the homepage content loads client-side.
+- Consistent entity naming (3Dprintzone / RAYK) across metadata, JSON-LD,
+  and llms.txt.
+
+### Key SEO URLs
+
+| Path | Purpose |
+|---|---|
+| `/sitemap.xml` | all static pages + active products/categories (auto-updating, `lastModified` from `updatedAt`) |
+| `/robots.txt` | allows public pages, disallows admin/API/private pages, points to sitemap |
+| `/llms.txt` | AI-assistant-readable site summary |
+
+### Changing the production domain
+
+1. Set **`NEXT_PUBLIC_APP_URL`** (or `NEXT_PUBLIC_SITE_URL` to override) in
+   the hosting dashboard to `https://your-final-domain.com` (no trailing
+   slash), then redeploy.
+2. Confirm `/sitemap.xml`, `/robots.txt`, and `/llms.txt` show the new domain.
+3. If both `www` and the bare domain resolve, pick one as canonical and
+   301-redirect the other at the DNS/host level.
 
 ### Submit your sitemap to Google Search Console
 
 1. Go to <https://search.google.com/search-console>.
-2. Add a property → **Domain** (preferred — covers all subdomains) or **URL prefix**.
-3. Verify ownership (DNS TXT record for Domain property; HTML file or DNS for URL prefix).
-4. Go to **Sitemaps** in the left menu.
-5. Submit: `sitemap.xml`.
-6. Allow 1–7 days for indexing.
+2. Add a property → **Domain** (preferred) or **URL prefix**.
+3. Verify ownership (DNS TXT record for Domain property).
+4. **Sitemaps** → submit `sitemap.xml`. Allow 1–7 days for indexing.
+5. Use **URL Inspection** to check how Google sees any specific page.
 
-### Optional next steps for the owner
+### Testing Open Graph previews
 
-- **Add a social preview image** at `/public/og.png` (1200×630 recommended) and reference it in `src/app/layout.tsx` under `openGraph.images`.
-- **Add Bing Webmaster Tools** with the same sitemap.
-- **Add a Google Business Profile** for "3Dprintzone, Cairo" — improves local search.
-- **Update the JSON-LD address** in `src/app/layout.tsx` with a real street address once you have one (currently city + country only).
+- Facebook/Instagram: <https://developers.facebook.com/tools/debug/>
+- X/Twitter: paste the URL in a draft post to preview the card
+- Generic: <https://www.opengraph.xyz/>
+- Structured data: <https://search.google.com/test/rich-results>
+
+### What should NOT be indexed
+
+`/admin*`, `/api*`, `/account*`, `/cart`, `/checkout`, `/wishlist`,
+`/track-order` and their RAYK equivalents. All are covered by robots.txt
+and (for pages) `noindex` meta. Do not add them to the sitemap.
+
+### SEO launch checklist
+
+- [ ] `NEXT_PUBLIC_APP_URL` set to the real production domain, redeployed
+- [ ] `/sitemap.xml` lists every active product + category with the production domain
+- [ ] `/robots.txt` points to the production sitemap and blocks `/admin`
+- [ ] `/llms.txt` renders with production URLs
+- [ ] Homepage SEO title/description/OG image reviewed in **Admin → Settings → 3dprintzone**
+- [ ] RAYK SEO title/description/OG image reviewed in **Admin → Settings → RAYK**
+- [ ] Legal page meta titles/descriptions reviewed for both brands
+- [ ] A product page passes the [Rich Results Test](https://search.google.com/test/rich-results) (Product + Breadcrumb)
+- [ ] OG preview looks right for `/`, a product page, and `/rayk`
+- [ ] Sitemap submitted to Google Search Console (and optionally Bing Webmaster Tools)
+- [ ] Google Business Profile created for local search (optional but recommended)
+- [ ] Product images have descriptive alt text (Admin → product → Image Manager)
 
 ---
 
@@ -604,20 +697,20 @@ See [Known dependency audit notes](#known-dependency-audit-notes) in section B. 
 
 ### Backing up the database
 
-Railway and most managed MySQL hosts offer scheduled backups in the dashboard — enable daily backups before launch.
+Managed Postgres providers handle this for you: **Neon** keeps point-in-time restore history and instant branches, **Prisma Postgres** and **Supabase** offer automated backups in their dashboards — confirm retention settings before launch.
 
 Manual backup (gzip-compressed SQL dump):
 
 ```bash
-mysqldump -h HOST -u USER -p DATABASE_NAME | gzip > backup-$(date +%F).sql.gz
+pg_dump "postgresql://USER:PASSWORD@HOST:5432/DATABASE_NAME" | gzip > backup-$(date +%F).sql.gz
 ```
 
 Restore conceptually:
 
-1. Provision an empty MySQL database.
+1. Provision an empty PostgreSQL database.
 2. Pipe the dump in:
    ```bash
-   gunzip -c backup-2026-05-15.sql.gz | mysql -h HOST -u USER -p NEW_DATABASE_NAME
+   gunzip -c backup-2026-05-15.sql.gz | psql "postgresql://USER:PASSWORD@HOST:5432/NEW_DATABASE_NAME"
    ```
 3. Update `DATABASE_URL` to point at the new DB and redeploy.
 
@@ -671,7 +764,15 @@ npm run db:migrate:dev -- --name describe_change
 `src/lib/utils/env.ts` throws if any required variable is missing.
 
 - Local: confirm `.env.local` exists and has the value.
-- Production: confirm the variable is set in the hosting dashboard. Some hosts require a redeploy after adding a variable.
+- Production (Vercel): confirm the variable is set in **Project → Settings → Environment Variables** for the environment that's failing (Production vs Preview). If you connected a Marketplace database (Neon / Prisma Postgres), check that the integration is attached to *this* project — that's what injects `DATABASE_URL`. **Vercel requires a redeploy after adding or changing a variable.**
+
+### Prisma provider mismatch: "the URL must start with the protocol `postgresql://`" / `P1013`
+
+The Prisma datasource provider is `postgresql`, so `DATABASE_URL` **must** begin with `postgresql://` (or `postgres://`). This error means the URL is still a `mysql://` string (or malformed):
+
+- Local: update `DATABASE_URL` in `.env` / `.env.local` to your PostgreSQL connection string.
+- Vercel: replace the old MySQL value in Environment Variables with the Postgres connection string, then redeploy.
+- The old MySQL migrations live in `prisma/migrations_mysql_archive/` for reference only — never run them against PostgreSQL. The active history in `prisma/migrations/` starts from the `init_postgres_schema` baseline.
 
 ### SMTP login error / OTP email not arriving
 
@@ -751,7 +852,7 @@ If `prisma migrate status` reports drift:
 Use this list the day you go live. Tick each item:
 
 **Infrastructure**
-- [ ] Production MySQL database provisioned and reachable
+- [ ] Production PostgreSQL database provisioned (Neon / Prisma Postgres via Vercel Marketplace) and reachable
 - [ ] Daily DB backups enabled
 - [ ] Cloudflare R2 bucket created (or alternative storage) and public URL working
 
@@ -796,4 +897,4 @@ Use this list the day you go live. Tick each item:
 
 ---
 
-_Last updated: 2026-05-15. For any question not covered here, start by reading `src/lib/utils/env.ts` (canonical env list) and `prisma/schema.prisma` (canonical data model)._
+_Last updated: 2026-07-19 (migrated from MySQL to PostgreSQL). For any question not covered here, start by reading `src/lib/utils/env.ts` (canonical env list) and `prisma/schema.prisma` (canonical data model)._

@@ -13,6 +13,9 @@ interface Product {
   shortDescription: string | null;
   description: string | null;
   sku: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  seoKeywords: string | null;
   price: number;
   compareAtPrice: number | null;
   stockQty: number;
@@ -82,6 +85,9 @@ export default function EditProductPage() {
     shortDescription: product.shortDescription ?? "",
     description: product.description ?? "",
     sku: product.sku ?? "",
+    seoTitle: product.seoTitle ?? "",
+    seoDescription: product.seoDescription ?? "",
+    seoKeywords: product.seoKeywords ?? "",
     price: String(product.price),
     compareAtPrice: product.compareAtPrice != null ? String(product.compareAtPrice) : "",
     stockQty: String(product.stockQty),

@@ -2,7 +2,6 @@
 
 import { usePathname } from "next/navigation";
 import { Suspense } from "react";
-import TopBar from "./TopBar";
 import Header from "./Header";
 import CategoryNav from "./CategoryNav";
 import Footer from "./Footer";
@@ -16,7 +15,6 @@ export default function StorefrontChrome({ children }: { children: React.ReactNo
 
   return (
     <>
-      <TopBar />
       <Header />
       <Suspense>
         <CategoryNav />

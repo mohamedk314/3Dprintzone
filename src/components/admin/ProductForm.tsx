@@ -11,6 +11,9 @@ export interface ProductFormValues {
   shortDescription: string;
   description: string;
   sku: string;
+  seoTitle: string;
+  seoDescription: string;
+  seoKeywords: string;
   price: string;
   compareAtPrice: string;
   stockQty: string;
@@ -30,7 +33,8 @@ interface ProductFormProps {
 
 const defaultValues: ProductFormValues = {
   name: "", categoryId: "", shortDescription: "", description: "",
-  sku: "", price: "", compareAtPrice: "", stockQty: "0",
+  sku: "", seoTitle: "", seoDescription: "", seoKeywords: "",
+  price: "", compareAtPrice: "", stockQty: "0",
   lowStockThreshold: "3", productType: "physical", isActive: true, isFeatured: false,
   forceShippingDiscussion: false, brand: "3dprintzone",
 };
@@ -67,6 +71,9 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
         shortDescription: form.shortDescription || null,
         description: form.description || null,
         sku: form.sku || null,
+        seoTitle: form.seoTitle || null,
+        seoDescription: form.seoDescription || null,
+        seoKeywords: form.seoKeywords || null,
         price: Number(form.price),
         compareAtPrice: form.compareAtPrice ? Number(form.compareAtPrice) : null,
         stockQty: Number(form.stockQty),
@@ -122,6 +129,12 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
             <label className={labelCls}>Name *</label>
             <input required type="text" value={form.name} onChange={(e) => setField("name", e.target.value)}
               placeholder="Product name" className={inputCls} />
+            {mode === "edit" && (
+              <p className="text-[11px] text-amber-600 mt-1">
+                Renaming changes the product&apos;s public URL — links already indexed by Google
+                or shared with customers will stop working.
+              </p>
+            )}
           </div>
           <div>
             <label className={labelCls}>Category *</label>
@@ -146,6 +159,49 @@ export default function ProductForm({ mode, productId, initialValues }: ProductF
             <label className={labelCls}>SKU</label>
             <input type="text" value={form.sku} onChange={(e) => setField("sku", e.target.value)}
               placeholder="Stock Keeping Unit (optional)" className={inputCls} />
+          </div>
+        </div>
+      </div>
+
+      {/* SEO */}
+      <div className="bg-white rounded-xl border border-gray-100 p-5">
+        <h2 className="font-semibold text-gray-900 mb-1 text-sm">Search & AI Discoverability (SEO)</h2>
+        <p className="text-xs text-gray-500 mb-4">
+          Optional — leave blank and good defaults are generated automatically from the
+          product name, description, and category. Fill these in for products you want to
+          rank better on Google and AI search assistants.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label className={labelCls}>SEO Title</label>
+            <input type="text" value={form.seoTitle} maxLength={100}
+              onChange={(e) => setField("seoTitle", e.target.value)}
+              placeholder="e.g. Custom 3D Printed Desk Organizer" className={inputCls} />
+            <p className="text-[11px] text-gray-400 mt-1 flex justify-between">
+              <span>Aim for 50–70 characters. Defaults to the product name.</span>
+              <span className={`tabular-nums ${form.seoTitle.length > 70 ? "text-amber-600" : ""}`}>{form.seoTitle.length}/70</span>
+            </p>
+          </div>
+          <div>
+            <label className={labelCls}>SEO Description</label>
+            <textarea value={form.seoDescription} maxLength={300} rows={2}
+              onChange={(e) => setField("seoDescription", e.target.value)}
+              placeholder="Write a short searchable summary, e.g. Custom 3D printed desk organizer for home and office. Mention material, color, size, and use case if relevant."
+              className={inputCls + " resize-none"} />
+            <p className="text-[11px] text-gray-400 mt-1 flex justify-between">
+              <span>Aim for 140–170 characters. Defaults to the short description.</span>
+              <span className={`tabular-nums ${form.seoDescription.length > 170 ? "text-amber-600" : ""}`}>{form.seoDescription.length}/170</span>
+            </p>
+          </div>
+          <div>
+            <label className={labelCls}>SEO Keywords</label>
+            <input type="text" value={form.seoKeywords} maxLength={300}
+              onChange={(e) => setField("seoKeywords", e.target.value)}
+              placeholder="e.g. desk organizer, 3D printed, office accessory" className={inputCls} />
+            <p className="text-[11px] text-gray-400 mt-1">
+              Optional. Add keywords naturally, separated by commas — do not repeat the same word.
+              Category and brand keywords are added automatically.
+            </p>
           </div>
         </div>
       </div>

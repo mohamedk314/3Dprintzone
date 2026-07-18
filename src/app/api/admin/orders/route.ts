@@ -49,10 +49,10 @@ export async function GET(req: NextRequest) {
       } : {}),
       ...(search ? {
         OR: [
-          { orderRef:      { contains: search } },
-          { customerName:  { contains: search } },
-          { email:         { contains: search } },
-          { phone:         { contains: search } },
+          { orderRef:      { contains: search, mode: "insensitive" as const } },
+          { customerName:  { contains: search, mode: "insensitive" as const } },
+          { email:         { contains: search, mode: "insensitive" as const } },
+          { phone:         { contains: search, mode: "insensitive" as const } },
         ],
       } : {}),
     };

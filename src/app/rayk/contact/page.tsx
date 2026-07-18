@@ -2,21 +2,42 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { readSiteSettings } from "@/lib/services/site-settings";
 import { resolveRaykContact } from "@/lib/services/site-settings-types";
+import { absoluteUrl, jsonLdString, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { rayk } = await readSiteSettings();
-  return {
+  return pageMetadata({
     title: rayk.contactPage.metaTitle,
     description: rayk.contactPage.metaDescription,
-  };
+    canonical: "/rayk/contact",
+    siteName: "RAYK",
+  });
 }
 
 export default async function RaykContactPage() {
   const settings = await readSiteSettings();
   const page = settings.rayk.contactPage;
   const c = resolveRaykContact(settings);
+
+  // Only data already displayed publicly on this page goes into the schema.
+  const contactJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ContactPage",
+    name: page.metaTitle,
+    description: page.metaDescription,
+    url: absoluteUrl("/rayk/contact"),
+    about: {
+      "@type": "Organization",
+      "@id": `${absoluteUrl("/rayk")}#organization`,
+      name: "RAYK",
+      url: absoluteUrl("/rayk"),
+      email: c.email,
+      telephone: c.phone,
+      sameAs: [c.instagramUrl].filter(Boolean),
+    },
+  };
 
   const channels = [
     c.phone && {
@@ -63,6 +84,10 @@ export default async function RaykContactPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16" style={{ background: "#F7F6F2" }}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLdString(contactJsonLd) }}
+      />
       <nav
         className="mb-6 flex items-center gap-2 text-[10px] font-semibold uppercase"
         style={{ color: "#A6A29A", letterSpacing: "0.3em" }}

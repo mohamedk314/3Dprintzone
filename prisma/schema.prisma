@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -128,8 +128,11 @@ model Product {
   name              String
   slug              String        @unique
   shortDescription  String?       @db.Text
-  description       String?       @db.LongText
+  description       String?       @db.Text
   sku               String?       @unique
+  seoTitle          String?       @db.VarChar(120)
+  seoDescription    String?       @db.VarChar(320)
+  seoKeywords       String?       @db.VarChar(320)
   price             Decimal       @db.Decimal(10, 2)
   compareAtPrice    Decimal?      @db.Decimal(10, 2)
   stockQty          Int           @default(0)
@@ -348,7 +351,7 @@ model CustomRequest {
   email        String
   phone        String
   requestType  CustomRequestType
-  description  String              @db.LongText
+  description  String              @db.Text
   referenceUrl String?
   status       CustomRequestStatus @default(pending)
   adminNotes   String?             @db.Text
