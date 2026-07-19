@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db/prisma";
-import { getSiteUrl } from "@/lib/seo";
+import { getSiteUrl, raykAbsoluteUrl } from "@/lib/seo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -30,30 +30,30 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticPages: MetadataRoute.Sitemap = [
     { url: base, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${base}/shop`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${base}/rayk`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
-    { url: `${base}/rayk/shop`, lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
+    { url: raykAbsoluteUrl("/rayk"), lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
+    { url: raykAbsoluteUrl("/rayk/shop"), lastModified: new Date(), changeFrequency: "daily", priority: 0.8 },
     { url: `${base}/custom-request`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.6 },
     { url: `${base}/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
     { url: `${base}/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/refund-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
     { url: `${base}/shipping-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${base}/rayk/contact`, lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
-    { url: `${base}/rayk/privacy-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${base}/rayk/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${base}/rayk/refund-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
-    { url: `${base}/rayk/shipping-policy`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: raykAbsoluteUrl("/rayk/contact"), lastModified: new Date(), changeFrequency: "monthly", priority: 0.5 },
+    { url: raykAbsoluteUrl("/rayk/privacy-policy"), lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: raykAbsoluteUrl("/rayk/terms"), lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: raykAbsoluteUrl("/rayk/refund-policy"), lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
+    { url: raykAbsoluteUrl("/rayk/shipping-policy"), lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
   ];
 
   const productPages: MetadataRoute.Sitemap = products.map((p) => ({
-    url: p.brand === "rayk" ? `${base}/rayk/product/${p.slug}` : `${base}/product/${p.slug}`,
+    url: p.brand === "rayk" ? raykAbsoluteUrl(`/rayk/product/${p.slug}`) : `${base}/product/${p.slug}`,
     lastModified: p.updatedAt,
     changeFrequency: "weekly",
     priority: 0.7,
   }));
 
   const categoryPages: MetadataRoute.Sitemap = categories.map((c) => ({
-    url: c.brand === "rayk" ? `${base}/rayk/category/${c.slug}` : `${base}/category/${c.slug}`,
+    url: c.brand === "rayk" ? raykAbsoluteUrl(`/rayk/category/${c.slug}`) : `${base}/category/${c.slug}`,
     lastModified: c.updatedAt,
     changeFrequency: "weekly",
     priority: 0.6,

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { readSiteSettings } from "@/lib/services/site-settings";
-import { absoluteUrl, jsonLdString } from "@/lib/seo";
+import { jsonLdString, raykAbsoluteUrl } from "@/lib/seo";
 import RaykHomePageClient from "./_client";
 
 export const dynamic = "force-dynamic";
@@ -11,12 +11,12 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { absolute: seo.metaTitle },
     description: seo.metaDescription,
-    alternates: { canonical: "/rayk" },
+    alternates: { canonical: raykAbsoluteUrl("/rayk") },
     openGraph: {
       title: seo.metaTitle,
       description: seo.metaDescription,
       type: "website",
-      url: "/rayk",
+      url: raykAbsoluteUrl("/rayk"),
       siteName: "RAYK",
       images: seo.ogImage
         ? [{ url: seo.ogImage, alt: settings.rayk.hero.backgroundImageAlt }]
@@ -40,7 +40,7 @@ export default async function RaykHomePage() {
     "@type": "WebPage",
     name: seo.metaTitle,
     description: seo.metaDescription,
-    url: absoluteUrl("/rayk"),
+    url: raykAbsoluteUrl("/rayk"),
   };
 
   return (

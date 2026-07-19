@@ -8,10 +8,20 @@ function getEnv(name: string): string {
   return value;
 }
 
+function normalizeEmail(value: string | undefined): string {
+  return (value ?? "").trim().toLowerCase();
+}
+
 export const env = {
   DATABASE_URL: getEnv("DATABASE_URL"),
-  ADMIN_EMAIL: process.env.ADMIN_EMAIL ?? "",
-  SUPER_ADMIN_EMAIL: (process.env.SUPER_ADMIN_EMAIL ?? "3dprintzone33@gmail.com").toLowerCase(),
+  // ADMIN_EMAIL is a deprecated alias kept for backward compatibility.
+  SUPER_ADMIN_EMAIL: normalizeEmail(
+    process.env.SUPER_ADMIN_EMAIL || process.env.ADMIN_EMAIL
+  ),
+  ADMIN_ALLOWED_EMAILS: (process.env.ADMIN_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean),
   JWT_SECRET: getEnv("JWT_SECRET"),
   ADMIN_OTP_EXPIRES_MINUTES: Number(process.env.ADMIN_OTP_EXPIRES_MINUTES ?? "10"),
   ADMIN_SESSION_EXPIRES_DAYS: Number(process.env.ADMIN_SESSION_EXPIRES_DAYS ?? "7"),

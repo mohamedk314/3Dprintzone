@@ -20,8 +20,34 @@ export function getSiteUrl(): string {
     process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL;
   if (configured) return configured.replace(/\/+$/, "");
   return process.env.NODE_ENV === "production"
-    ? "https://3dprintzone.com"
+    ? "https://3dprintzone-eg.com"
     : "http://localhost:3000";
+}
+
+/**
+ * Canonical origin for the RAYK brand subdomain (e.g.
+ * https://rayk.3dprintzone-eg.com). Returns null when not configured so
+ * callers can fall back to path-based `/rayk/*` URLs on the main site —
+ * that keeps local dev and deployments without the subdomain working.
+ */
+export function getRaykSiteUrl(): string | null {
+  const configured = process.env.NEXT_PUBLIC_RAYK_SITE_URL;
+  return configured ? configured.replace(/\/+$/, "") : null;
+}
+
+/**
+ * Absolute URL for a RAYK page from its path-based route (must start with
+ * "/rayk"). When the RAYK subdomain is configured, the `/rayk` prefix is
+ * dropped and the URL is built on the subdomain:
+ *   /rayk           → https://rayk.3dprintzone-eg.com/
+ *   /rayk/shop      → https://rayk.3dprintzone-eg.com/shop
+ * Otherwise falls back to the path-based URL on the main site.
+ */
+export function raykAbsoluteUrl(path: string): string {
+  const raykBase = getRaykSiteUrl();
+  if (!raykBase) return absoluteUrl(path);
+  const subPath = path.replace(/^\/rayk(?=\/|$)/, "");
+  return `${raykBase}${subPath || "/"}`;
 }
 
 export function absoluteUrl(path: string): string {

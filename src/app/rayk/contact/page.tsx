@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { readSiteSettings } from "@/lib/services/site-settings";
 import { resolveRaykContact } from "@/lib/services/site-settings-types";
-import { absoluteUrl, jsonLdString, pageMetadata } from "@/lib/seo";
+import { jsonLdString, pageMetadata, raykAbsoluteUrl } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMetadata({
     title: rayk.contactPage.metaTitle,
     description: rayk.contactPage.metaDescription,
-    canonical: "/rayk/contact",
+    canonical: raykAbsoluteUrl("/rayk/contact"),
     siteName: "RAYK",
   });
 }
@@ -27,12 +27,12 @@ export default async function RaykContactPage() {
     "@type": "ContactPage",
     name: page.metaTitle,
     description: page.metaDescription,
-    url: absoluteUrl("/rayk/contact"),
+    url: raykAbsoluteUrl("/rayk/contact"),
     about: {
       "@type": "Organization",
-      "@id": `${absoluteUrl("/rayk")}#organization`,
+      "@id": `${raykAbsoluteUrl("/rayk")}#organization`,
       name: "RAYK",
-      url: absoluteUrl("/rayk"),
+      url: raykAbsoluteUrl("/rayk"),
       email: c.email,
       telephone: c.phone,
       sameAs: [c.instagramUrl].filter(Boolean),

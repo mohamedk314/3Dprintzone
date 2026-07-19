@@ -9,7 +9,11 @@ const OTP_COOLDOWN_SECONDS = 60;
 const OTP_MAX_ATTEMPTS = 5;
 
 function isSuperAdminEmail(email: string): boolean {
-  return email.trim().toLowerCase() === env.SUPER_ADMIN_EMAIL;
+  return env.SUPER_ADMIN_EMAIL !== "" && email === env.SUPER_ADMIN_EMAIL;
+}
+
+function isAllowedAdminEmail(email: string): boolean {
+  return env.ADMIN_ALLOWED_EMAILS.includes(email);
 }
 
 export async function requestAdminOtp(email: string) {
@@ -36,9 +40,23 @@ export async function requestAdminOtp(email: string) {
         });
       }
     }
+  } else if (!adminUser && isAllowedAdminEmail(normalizedEmail)) {
+    // Env-allowlisted admin: create on first login
+    adminUser = await prisma.adminUser.create({
+      data: { email: normalizedEmail, role: "admin", isActive: true },
+    });
   } else {
-    // Normal admin: must exist and be active
+    // Normal admin: must exist and be active (a deactivated record stays
+    // locked out even if the email is in ADMIN_ALLOWED_EMAILS)
     if (!adminUser || !adminUser.isActive) {
+      if (
+        env.SUPER_ADMIN_EMAIL === "" &&
+        process.env.NODE_ENV !== "production"
+      ) {
+        throw new Error(
+          "Admin auth is not configured: set SUPER_ADMIN_EMAIL in your .env file"
+        );
+      }
       throw new Error("Unauthorized: you are not an authorized admin");
     }
   }

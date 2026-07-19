@@ -244,8 +244,9 @@ All variables are read in `src/lib/utils/env.ts`. Required vars throw an error a
 | `DATABASE_URL` | ✅ | `postgresql://postgres:password@127.0.0.1:5432/3dprintzone` | PostgreSQL connection string used by Prisma. **Must start with `postgresql://`** | Local: your local Postgres (or a dev branch of your managed DB). Production: the Neon / Prisma Postgres connection string (keep `sslmode=require`) |
 | `NEXT_PUBLIC_APP_URL` | ✅ | `https://3dprintzone.com` | Public site URL. Used by metadata, sitemap, robots, Open Graph. **No trailing slash.** | Local: `http://localhost:3000`. Production: your real domain |
 | `JWT_SECRET` | ✅ | 96-char hex string | Signs admin session JWTs. Generate with `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` | Different per environment. Never share between local and prod |
-| `ADMIN_EMAIL` | ⚪ optional | `admin@yourdomain.com` | Optional default admin email (UI label) | Same in both |
-| `SUPER_ADMIN_EMAIL` | ⚪ optional | `owner@yourdomain.com` | Email that is auto-promoted to `super_admin` on first OTP request and cannot be locked out. Lowercased internally. Default fallback exists in code | Same in both — the production owner email |
+| `SUPER_ADMIN_EMAIL` | ✅ (for admin login) | `owner@yourdomain.com` | The only email authorized as super admin. Auto-created with role `super_admin` on first OTP request and cannot be locked out. Trimmed + lowercased before comparison. **No fallback exists in code — if unset (and `ADMIN_EMAIL` unset), no super admin can log in** | Same in both — the production owner email |
+| `ADMIN_ALLOWED_EMAILS` | ⚪ optional | `admin1@example.com,admin2@example.com` | Comma-separated additional admin emails. Each is auto-created with role `admin` on first OTP request. An admin deactivated in the dashboard stays locked out even if listed here | Same in both |
+| `ADMIN_EMAIL` | ⚪ deprecated | `owner@yourdomain.com` | **Legacy alias for `SUPER_ADMIN_EMAIL`** — only read when `SUPER_ADMIN_EMAIL` is unset. Prefer `SUPER_ADMIN_EMAIL` | — |
 | `ADMIN_OTP_EXPIRES_MINUTES` | ⚪ optional | `10` | How long an OTP stays valid (server enforces minimum of 5) | Same |
 | `ADMIN_SESSION_EXPIRES_DAYS` | ⚪ optional | `7` | Days an admin JWT stays valid | Same |
 | `SMTP_HOST` | ✅ | `smtp.gmail.com` | SMTP server host | Same |
@@ -405,8 +406,24 @@ The admin dashboard is at `https://yourdomain.com/admin`.
 - A new code can be requested every 60 seconds (cooldown).
 - After 5 wrong attempts, the code is invalidated and you must request a new one.
 - Codes are stored hashed in the database. The plain code only exists in the email we send.
-- The **super-admin** account (set via `SUPER_ADMIN_EMAIL`) is auto-created on first OTP request and cannot be deactivated.
-- Other admin accounts must be created by the super-admin in **Admin → Admins**.
+
+### Who is allowed to log in
+
+Admin authorization is controlled **entirely by environment variables and the `AdminUser` table** — no email is hardcoded in source code.
+
+- The **super-admin** is the email in `SUPER_ADMIN_EMAIL` (comparison is trimmed and case-insensitive). This account is auto-created with role `super_admin` on first OTP request and cannot be deactivated. `ADMIN_EMAIL` is a deprecated alias, read only when `SUPER_ADMIN_EMAIL` is unset.
+- **Additional admins** can log in if their email is either:
+  - listed in `ADMIN_ALLOWED_EMAILS` (comma-separated) — auto-created with role `admin` on first OTP request, or
+  - created by the super-admin in **Admin → Admins**.
+- An admin **deactivated** in the dashboard stays locked out even if listed in `ADMIN_ALLOWED_EMAILS`.
+
+### Troubleshooting "Unauthorized: you are not an authorized admin"
+
+1. Check that `SUPER_ADMIN_EMAIL` is set in `.env.local` (local) or your hosting dashboard (production) and matches the email you're typing — whitespace and letter case don't matter, but the address must be identical otherwise.
+2. If you only set `ADMIN_EMAIL`, it still works as a legacy alias, but switch to `SUPER_ADMIN_EMAIL`.
+3. For non-super-admin emails: the email must be in `ADMIN_ALLOWED_EMAILS` or already exist (and be active) in **Admin → Admins**.
+4. After changing env vars, **restart the dev server** (locally) or **redeploy** (Vercel/Railway) — env values are read at startup.
+5. In development, if no super-admin email is configured at all, the API returns a clear configuration error instead of the generic message.
 
 ### Managing the store
 

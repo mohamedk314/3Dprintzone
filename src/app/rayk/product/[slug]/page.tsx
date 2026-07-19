@@ -10,6 +10,7 @@ import {
   productSeoDescription,
   productSeoKeywords,
   productSeoTitle,
+  raykAbsoluteUrl,
 } from "@/lib/seo";
 import RaykProductPageClient from "./_client";
 
@@ -53,7 +54,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const title = productSeoTitle(seoSource);
   const desc = productSeoDescription(seoSource, "RAYK");
   const image = product.images[0];
-  const canonical = `/rayk/product/${slug}`;
+  const canonical = raykAbsoluteUrl(`/rayk/product/${slug}`);
 
   return {
     title,
@@ -83,7 +84,7 @@ export default async function RaykProductPage({ params }: Params) {
   const { slug } = await params;
   const product = await getProduct(slug);
 
-  const url = absoluteUrl(`/rayk/product/${slug}`);
+  const url = raykAbsoluteUrl(`/rayk/product/${slug}`);
 
   const productJsonLd = product
     ? {
@@ -114,12 +115,12 @@ export default async function RaykProductPage({ params }: Params) {
 
   const breadcrumbs = product
     ? breadcrumbJsonLd([
-        { name: "RAYK", path: "/rayk" },
-        { name: "Shop", path: "/rayk/shop" },
+        { name: "RAYK", path: raykAbsoluteUrl("/rayk") },
+        { name: "Shop", path: raykAbsoluteUrl("/rayk/shop") },
         ...(product.category
-          ? [{ name: product.category.name, path: `/rayk/category/${product.category.slug}` }]
+          ? [{ name: product.category.name, path: raykAbsoluteUrl(`/rayk/category/${product.category.slug}`) }]
           : []),
-        { name: product.name, path: `/rayk/product/${slug}` },
+        { name: product.name, path: raykAbsoluteUrl(`/rayk/product/${slug}`) },
       ])
     : null;
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import { prisma } from "@/lib/db/prisma";
-import { absoluteUrl, breadcrumbJsonLd, jsonLdString, truncateAtWord } from "@/lib/seo";
+import { breadcrumbJsonLd, jsonLdString, raykAbsoluteUrl, truncateAtWord } from "@/lib/seo";
 import RaykCategoryPageClient from "./_client";
 
 export const runtime = "nodejs";
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       `Browse ${category.name} — 3D printed lighting and decor by RAYK, delivered across Egypt.`,
     170
   );
-  const canonical = `/rayk/category/${slug}`;
+  const canonical = raykAbsoluteUrl(`/rayk/category/${slug}`);
 
   return {
     title: category.name,
@@ -63,15 +63,15 @@ export default async function RaykCategoryPage({ params }: Params) {
         name: category.name,
         description:
           category.description ?? `${category.name} — 3D printed lighting and decor by RAYK.`,
-        url: absoluteUrl(`/rayk/category/${slug}`),
+        url: raykAbsoluteUrl(`/rayk/category/${slug}`),
       }
     : null;
 
   const breadcrumbs = category
     ? breadcrumbJsonLd([
-        { name: "RAYK", path: "/rayk" },
-        { name: "Shop", path: "/rayk/shop" },
-        { name: category.name, path: `/rayk/category/${slug}` },
+        { name: "RAYK", path: raykAbsoluteUrl("/rayk") },
+        { name: "Shop", path: raykAbsoluteUrl("/rayk/shop") },
+        { name: category.name, path: raykAbsoluteUrl(`/rayk/category/${slug}`) },
       ])
     : null;
 

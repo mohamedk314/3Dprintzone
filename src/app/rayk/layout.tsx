@@ -3,7 +3,7 @@ import RaykHeader from "@/components/rayk/RaykHeader";
 import RaykFooter from "@/components/rayk/RaykFooter";
 import { readSiteSettings } from "@/lib/services/site-settings";
 import { resolveRaykContact } from "@/lib/services/site-settings-types";
-import { absoluteUrl, jsonLdString } from "@/lib/seo";
+import { absoluteUrl, jsonLdString, raykAbsoluteUrl } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     type: "website",
     siteName: "RAYK",
     locale: "en_EG",
-    url: absoluteUrl("/rayk"),
+    url: raykAbsoluteUrl("/rayk"),
   },
   twitter: {
     card: "summary_large_image",
@@ -31,9 +31,9 @@ export default async function RaykLayout({ children }: { children: React.ReactNo
   const raykJsonLd = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "@id": `${absoluteUrl("/rayk")}#organization`,
+    "@id": `${raykAbsoluteUrl("/rayk")}#organization`,
     name: "RAYK",
-    url: absoluteUrl("/rayk"),
+    url: raykAbsoluteUrl("/rayk"),
     description: "RAYK — custom 3D printed lighting fixtures, gifts, and decor, made in Egypt.",
     email: contact.email,
     telephone: contact.phone,
